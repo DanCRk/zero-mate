@@ -207,6 +207,31 @@ export class SettingsModal {
       this.openBrainModal?.();
     });
 
+    // Behavior: Quick ping active AI
+    document.getElementById('btn-quick-ping-ai')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-quick-ping-ai');
+      const prevText = btn.textContent;
+      btn.textContent = '[ PINGING... ]';
+      btn.disabled = true;
+      this.sound.play('pod-scan');
+      try {
+        const res = await this.host.askBrain('Diagnóstico táctico: Confirma el estado del enlace en una frase.');
+        this.sound.play(res.offlineFallback ? 'alert-permission' : 'ui-confirm');
+        this.engine.panel.say({
+          kind: res.offlineFallback ? 'alert' : 'info',
+          speaker: res.speaker || 'pod',
+          tag: (res.provider || 'AI').toUpperCase(),
+          line: res.line,
+          hold: 5000,
+        });
+      } catch (err) {
+        this.sound.play('ui-cancel');
+      } finally {
+        btn.textContent = prevText;
+        btn.disabled = false;
+      }
+    });
+
     // Behavior: Proactive minutes
     this.proactiveSel?.addEventListener('change', () => {
       const mins = parseInt(this.proactiveSel.value, 10);

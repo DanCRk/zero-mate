@@ -152,6 +152,44 @@ async function boot() {
     });
   });
 
+  const brainPingBtn = document.getElementById('brain-ping-btn');
+  const brainPingStatusEl = document.getElementById('brain-ping-status');
+
+  brainPingBtn?.addEventListener('click', async () => {
+    if (brainPingStatusEl) {
+      brainPingStatusEl.style.display = 'block';
+      brainPingStatusEl.textContent = 'Enviando pulso de diagnóstico al agente de IA activo...';
+      brainPingStatusEl.style.color = '#d8b868';
+    }
+    soundBank.play('pod-scan');
+    try {
+      const start = performance.now();
+      const res = await host.askBrain('Diagnóstico táctico: Confirma el estado operativo del enlace de comunicación en una sola frase breve.');
+      const ms = Math.round(performance.now() - start);
+      soundBank.play(res.offlineFallback ? 'alert-permission' : 'ui-confirm');
+      const statusText = res.offlineFallback
+        ? `[CONTINGENCIA LOCAL / OFFLINE (${ms}ms)]: ${res.line}`
+        : `[EN LÍNEA / ${(res.provider || 'AI').toUpperCase()} (${ms}ms)]: "${res.line}"`;
+      if (brainPingStatusEl) {
+        brainPingStatusEl.textContent = statusText;
+        brainPingStatusEl.style.color = res.offlineFallback ? '#d88848' : '#68d888';
+      }
+      panel.say({
+        kind: res.offlineFallback ? 'alert' : 'info',
+        speaker: res.speaker || 'pod',
+        tag: (res.provider || 'AI').toUpperCase(),
+        line: res.line,
+        hold: 6000,
+      });
+    } catch (err) {
+      soundBank.play('ui-cancel');
+      if (brainPingStatusEl) {
+        brainPingStatusEl.textContent = `[ERROR DE ENLACE]: ${err.message}`;
+        brainPingStatusEl.style.color = '#e05858';
+      }
+    }
+  });
+
   let voicePtt = null;
   let settingsModal = null;
 
