@@ -5,17 +5,19 @@
 import { clamp } from './util.js';
 
 export class ChatBar {
-  constructor({ el, host, soundBank, onSubmit, onMicToggle, onOpenSettings }) {
+  constructor({ el, host, soundBank, onSubmit, onMicToggle, onOpenSettings, onOpenSystemSettings }) {
     this.el = el;
     this.host = host;
     this.sound = soundBank;
     this.onSubmit = onSubmit;
     this.onMicToggle = onMicToggle;
     this.onOpenSettings = onOpenSettings;
+    this.onOpenSystemSettings = onOpenSystemSettings;
 
     this.form = el.querySelector('#chat-form');
     this.input = el.querySelector('#chat-input');
     this.micBtn = el.querySelector('#chat-mic-btn');
+    this.settingsBtn = el.querySelector('#chat-settings-btn');
     this.cfgBtn = el.querySelector('#chat-cfg-btn');
     this.closeBtn = el.querySelector('#chat-close-btn');
     this.statusEl = el.querySelector('#chat-status');
@@ -45,6 +47,11 @@ export class ChatBar {
 
     this.micBtn?.addEventListener('click', () => {
       this.onMicToggle?.();
+    });
+
+    this.settingsBtn?.addEventListener('click', () => {
+      this.sound.play('ui-open');
+      this.onOpenSystemSettings?.();
     });
 
     this.cfgBtn?.addEventListener('click', () => {
