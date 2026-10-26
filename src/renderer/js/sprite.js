@@ -31,6 +31,7 @@ uniform float uArmR;
 uniform float uLongL;
 uniform float uLongR;
 uniform float uSit;
+uniform float uSitTex;
 uniform float uKickL;
 uniform float uKickR;
 uniform vec2 uSmear;
@@ -41,6 +42,7 @@ uniform float uSplit;
 uniform float uCollapse;
 uniform float uDissolve;
 uniform float uBunker;
+uniform float uDirectTex;
 uniform vec4 uSil;
 uniform vec2 uMisreg;
 uniform vec3 uRim;
@@ -50,10 +52,13 @@ const vec2 NECK = vec2(130.0, 82.0);
 const vec2 SHOULDER_L = vec2(90.0, 102.0);
 const vec2 SHOULDER_R = vec2(170.0, 102.0);
 const float AXIS = 130.0;
-const float HIP = 250.0;
+const float HIP = 224.0;
 const float KNEE = 320.0;
 const float KNEE_LX = 92.0;
 const float KNEE_RX = 168.0;
+const float SIT_KNEE = 248.0;
+const float SIT_KNEE_LX = 112.0;
+const float SIT_KNEE_RX = 147.0;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -92,6 +97,8 @@ vec4 cel(vec2 s) {
 
 float legL(vec2 s) { return smoothstep(KNEE - 10.0, KNEE + 2.0, s.y) * (1.0 - step(AXIS, s.x)); }
 float legR(vec2 s) { return smoothstep(KNEE - 10.0, KNEE + 2.0, s.y) * step(AXIS, s.x); }
+float sitLegL(vec2 s) { return step(SIT_KNEE, s.y) * (1.0 - step(AXIS - 1.0, s.x)); }
+float sitLegR(vec2 s) { return step(SIT_KNEE, s.y) * step(AXIS - 1.0, s.x); }
 
 float thighScale() { return mix(1.0, 0.42, uSit); }
 
@@ -155,6 +162,20 @@ vec2 bend(vec2 q) {
 }
 
 vec4 torso(vec2 q) {
+  if (uSitTex > 0.5) {
+    // Dedicated seated sprite (2b-sit.png): hands rest on the ledge at y=224,
+    // while dangling lower legs swing from her seated knees (y=248).
+    vec2 qL = rot(q, vec2(SIT_KNEE_LX, SIT_KNEE), -uKickL);
+    vec2 qR = rot(q, vec2(SIT_KNEE_RX, SIT_KNEE), uKickR);
+    float upperMask = step(SIT_KNEE + 4.0, q.y);
+    vec4 b = cel(q) * (1.0 - upperMask);
+    vec4 l = sitLegL(qL) > 0.0 ? cel(qL) : vec4(0.0);
+    vec4 r = sitLegR(qR) > 0.0 ? cel(qR) : vec4(0.0);
+    vec4 legs = l + r * (1.0 - l.a);
+    // Keep knee cap seam covered by the upper thigh down to SIT_KNEE + 4
+    if (q.y < SIT_KNEE + 4.0) return b + legs * (1.0 - b.a);
+    return legs + b * (1.0 - legs.a);
+  }
   if (uSit <= 0.0 && uKickL == 0.0 && uKickR == 0.0) {
     return (armLMask(q) + armRMask(q)) > 0.0 ? vec4(0.0) : cel(q);
   }
@@ -171,6 +192,10 @@ vec4 torso(vec2 q) {
 }
 
 vec4 rig(vec2 q) {
+  if (uDirectTex > 0.5) return cel(q);
+  if (uSitTex > 0.5 && uArmL == 0.0 && uArmR == 0.0) {
+    return torso(bend(q));
+  }
   vec2 qL = armLeftCoord(q);
   vec2 qR = armRightCoord(q);
   vec4 l = armLMask(qL) > 0.0 ? cel(qL) : vec4(0.0);
@@ -184,6 +209,7 @@ vec4 rig(vec2 q) {
 
 // Rig-aware silhouette alpha sample so motion smears/echoes always match 2B's exact animated pose
 float fastAlpha(vec2 q) {
+  if (uDirectTex > 0.5) return cel(q).a;
   return rig(q).a;
 }
 
@@ -249,9 +275,9 @@ void main() {
 
 const UNIFORMS = [
   'uView', 'uPad', 'uTex', 'uSize', 'uSeed', 'uBoil', 'uHair', 'uSkirt', 'uHead',
-  'uArmL', 'uArmR', 'uLongL', 'uLongR', 'uSit', 'uKickL', 'uKickR',
+  'uArmL', 'uArmR', 'uLongL', 'uLongR', 'uSit', 'uSitTex', 'uKickL', 'uKickR',
   'uSmear', 'uEcho', 'uGlitch', 'uGlitchSeed', 'uSplit', 'uCollapse', 'uDissolve',
-  'uBunker', 'uSil', 'uMisreg', 'uRim', 'uAlpha',
+  'uBunker', 'uDirectTex', 'uSil', 'uMisreg', 'uRim', 'uAlpha',
 ];
 
 export const SPRITE = {
@@ -260,7 +286,7 @@ export const SPRITE = {
   pad: 56,
   head: { x: 130, y: 54 },
   feet: { x: 130, y: 434 },
-  hip: 250,
+  hip: 224,
   shoulderL: { x: 90, y: 102 },
   shoulderR: { x: 170, y: 102 },
   handL: { x: 48, y: 230 },
@@ -268,9 +294,12 @@ export const SPRITE = {
 };
 
 export class SpriteRenderer {
-  constructor(canvas, image) {
+  constructor(canvas, image, sitImage = null, peekImage = null, sleepImage = null, spinImage = null, ceilingImage = null) {
     this.canvas = canvas;
     this.image = image;
+    this.sitImage = sitImage;
+    this.peekImage = peekImage;
+    this.sleepImage = sleepImage;
     const gl = canvas.getContext('webgl', {
       premultipliedAlpha: true,
       alpha: true,
@@ -303,7 +332,32 @@ export class SpriteRenderer {
     for (const name of UNIFORMS) this.u[name] = gl.getUniformLocation(prog, name);
 
     this.tex = gl.createTexture();
-    this.setTexture(image);
+    this.setTexture(image, this.tex);
+    this.sitTex = null;
+    if (sitImage) {
+      this.sitTex = gl.createTexture();
+      this.setTexture(sitImage, this.sitTex);
+    }
+    this.peekTex = null;
+    if (peekImage) {
+      this.peekTex = gl.createTexture();
+      this.setTexture(peekImage, this.peekTex);
+    }
+    this.sleepTex = null;
+    if (sleepImage) {
+      this.sleepTex = gl.createTexture();
+      this.setTexture(sleepImage, this.sleepTex);
+    }
+    this.spinTex = null;
+    if (spinImage) {
+      this.spinTex = gl.createTexture();
+      this.setTexture(spinImage, this.spinTex);
+    }
+    this.ceilingTex = null;
+    if (ceilingImage) {
+      this.ceilingTex = gl.createTexture();
+      this.setTexture(ceilingImage, this.ceilingTex);
+    }
 
     gl.uniform1i(this.u.uTex, 0);
     gl.uniform2f(this.u.uSize, SPRITE.width, SPRITE.height);
@@ -312,9 +366,9 @@ export class SpriteRenderer {
     gl.clearColor(0, 0, 0, 0);
   }
 
-  setTexture(image) {
+  setTexture(image, targetTex = this.tex) {
     const { gl } = this;
-    gl.bindTexture(gl.TEXTURE_2D, this.tex);
+    gl.bindTexture(gl.TEXTURE_2D, targetTex);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -342,6 +396,27 @@ export class SpriteRenderer {
 
   draw(s) {
     const { gl, u } = this;
+    let targetTex = this.tex;
+    let isSit = false;
+    let isDirect = false;
+    if ((s.pose === 'spin' || s.pose === 'wall_spin') && this.spinTex) {
+      targetTex = this.spinTex;
+      isDirect = true;
+    } else if (s.pose === 'ceiling' && this.ceilingTex) {
+      targetTex = this.ceilingTex;
+      isDirect = true;
+    } else if (s.pose === 'peek' && this.peekTex) {
+      targetTex = this.peekTex;
+      isDirect = true;
+    } else if (s.pose === 'sleep' && this.sleepTex) {
+      targetTex = this.sleepTex;
+      isSit = true;
+    } else if (this.sitTex && s.sit > 0.5) {
+      targetTex = this.sitTex;
+      isSit = true;
+    }
+
+    gl.bindTexture(gl.TEXTURE_2D, targetTex);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.uniform1f(u.uSeed, s.seed);
     gl.uniform1f(u.uBoil, s.boil);
@@ -353,6 +428,7 @@ export class SpriteRenderer {
     gl.uniform1f(u.uLongL, s.longL);
     gl.uniform1f(u.uLongR, s.longR);
     gl.uniform1f(u.uSit, s.sit);
+    gl.uniform1f(u.uSitTex, isSit ? 1.0 : 0.0);
     gl.uniform1f(u.uKickL, s.kickL);
     gl.uniform1f(u.uKickR, s.kickR);
     gl.uniform2f(u.uSmear, s.smear[0], s.smear[1]);
@@ -363,6 +439,7 @@ export class SpriteRenderer {
     gl.uniform1f(u.uCollapse, s.collapse);
     gl.uniform1f(u.uDissolve, s.dissolve);
     gl.uniform1f(u.uBunker, s.bunker || 0);
+    gl.uniform1f(u.uDirectTex, isDirect ? 1.0 : 0.0);
     gl.uniform4f(u.uSil, s.sil[0], s.sil[1], s.sil[2], s.silAmount);
     gl.uniform2f(u.uMisreg, s.misreg[0], s.misreg[1]);
     gl.uniform3f(u.uRim, 0.85, 0.82, 0.72);

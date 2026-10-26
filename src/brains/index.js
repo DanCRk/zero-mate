@@ -13,13 +13,14 @@
 // Automatically injects compact .ctx files (themes/<theme>/personality.ctx, skills/user-memory.ctx, skills/INDEX.ctx).
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
 const PROVIDERS = [
-  { id: 'agy', label: 'Antigravity CLI (Headless · 0 Consola)', type: 'cli', defaultModel: 'agy-default' },
+  { id: 'agy', label: 'Antigravity CLI (Headless · 0 Consola)', type: 'cli', defaultModel: 'gemini-3.8-flash-low' },
   { id: 'claude-cli', label: 'Claude Code CLI (Headless · 0 Consola)', type: 'cli', defaultModel: 'claude-code' },
   { id: 'ollama', label: 'Ollama Local (127.0.0.1:11434)', type: 'local', defaultModel: 'llama3.2' },
   { id: 'gemini', label: 'Google Gemini API', type: 'api', defaultModel: 'gemini-2.5-flash' },
@@ -76,6 +77,24 @@ function buildSystemContext(themeId = 'nier-2b', lang = 'en') {
     ? `Inicia tu respuesta con "[${charName}]" si hablas como ${charName} o "[${compName}]" si hablas como ${compName} (usando "Reporte:", "Propuesta:" o "Alerta:").`
     : `Start your reply with "[${charName}]" if speaking as ${charName} or "[${compName}]" if speaking as ${compName} (using "Report:", "Proposal:" or "Alert:").`;
 
+  const agentDirectives = isEs
+    ? [
+        'DIRECTIVAS AGÉNTICAS Y AUTO-APRENDIZAJE:',
+        '1. Iniciativa Táctica: Deduce tú mismo los parámetros exactos. Si el operador pide "música rock" o "youtube con música", genera la URL de búsqueda directa: [TOOL:open_app_or_url {"target": "https://www.youtube.com/results?search_query=musica+rock"}].',
+        '2. Memoria y Preferencias: Si el operador te expresa gustos, nombres o preferencias (ej. género musical favorito, apodos, etc.), guarda el dato de inmediato usando [TOOL:update_user_memory {"key": "PREF_MUSICA", "fact": "..."}]. Utiliza siempre el contexto de USER_MEMORY para personalizar tus respuestas.',
+        '3. Creación de Skills Genéricas: Si descubres una rutina nueva o te piden aprender a hacer algo, guarda una skill genérica con [TOOL:save_skill {"filename": "nombre-skill", "dsl": "pasos tácticos", "summary": "descripción"}].',
+        '4. Multi-Herramientas: Puedes concatenar varias herramientas [TOOL:...] en una misma respuesta (ejemplo: abrir la música y registrar el gusto en memoria).',
+        '5. Formato: Responde siempre en personaje ([2B] o [Pod 042]) en 1 o 2 oraciones concisas y directas para el HUD del escritorio.'
+      ].join('\n')
+    : [
+        'AGENTIC & SELF-LEARNING DIRECTIVES:',
+        '1. Tactical Initiative: Deduce exact parameters. If operator requests music or media (e.g. "rock music on youtube"), generate the direct search URL: [TOOL:open_app_or_url {"target": "https://www.youtube.com/results?search_query=rock+music"}].',
+        '2. Memory & Preferences: If operator expresses preferences or facts, record them immediately via [TOOL:update_user_memory {"key": "PREF_MUSIC", "fact": "..."}]. Consult USER_MEMORY to personalize replies.',
+        '3. Generic Skill Creation: If you learn a new pattern, register a skill via [TOOL:save_skill {"filename": "name", "dsl": "steps", "summary": "desc"}].',
+        '4. Multi-Tool: You may append multiple [TOOL:...] calls in one turn.',
+        '5. Format: Always respond in character ([2B] or [Pod 042]) in 1-2 concise sentences for the HUD.'
+      ].join('\n');
+
   return [
     personality,
     userMem,
@@ -94,6 +113,7 @@ function buildSystemContext(themeId = 'nier-2b', lang = 'en') {
     '- load_skill: {"filename": "..."}',
     '- save_skill: {"filename": "...", "dsl": "...", "summary": "..."}',
     '- update_user_memory: {"key": "...", "fact": "..."}',
+    agentDirectives,
     instruction,
     speakerPrefix,
   ].filter(Boolean).join('\n');
@@ -107,85 +127,218 @@ function parseCharacterReply(rawText) {
   let slot = null;
   let toolCall = null;
 
-  const toolMatch = text.match(/\[TOOL:([a-z_]+)\s*(\{.*?\})?\]/i);
-  if (toolMatch) {
-    try {
-      const toolParams = toolMatch[2] ? JSON.parse(toolMatch[2]) : {};
-      toolCall = { name: toolMatch[1].toLowerCase(), params: toolParams };
-    } catch {
-      toolCall = { name: toolMatch[1].toLowerCase(), params: {} };
+  // 1. Extract multiple [TOOL:name {json}] calls
+  const toolCalls = [];
+  const toolRegex = /\[TOOL:([a-z0-9_-]+)\s*(\{[\s\S]*?\})?\]/gi;
+  let match;
+  while ((match = toolRegex.exec(text)) !== null) {
+    const toolName = match[1].toLowerCase();
+    let params = {};
+    if (match[2]) {
+      try {
+        params = JSON.parse(match[2]);
+      } catch {
+        try {
+          const relaxed = match[2].replace(/'/g, '"').replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+          params = JSON.parse(relaxed);
+        } catch {}
+      }
     }
-    text = text.replace(toolMatch[0], '').trim();
+    toolCalls.push({ name: toolName, params });
   }
+  if (toolCalls.length > 0) {
+    toolCall = toolCalls[0];
+  }
+  text = text.replace(toolRegex, '').trim();
 
-  const slotMatch = text.match(/\[SLOT:([a-z_]+)\]/i);
+  // 2. Extract [SLOT:name]
+  const slotMatch = text.match(/\[SLOT:([a-z0-9_-]+)\]/i);
   if (slotMatch) {
     slot = slotMatch[1].toLowerCase();
     text = text.replace(slotMatch[0], '').trim();
   }
 
-  if (/^\[POD(?:\s*042)?\]/i.test(text)) {
+  // 3. Strip code blocks and markdown horizontal dividers
+  text = text.replace(/^\`\`\`[a-z]*\s*/i, '').replace(/\`\`\`$/i, '').trim();
+  text = text.replace(/\r\n/g, '\n');
+  text = text.replace(/^[ \t]*[-*_]{3,}[ \t]*$/gm, '').trim();
+
+  // 4. Detect speaker before stripping labels
+  if (/(?:\*\*|\*|\[)?Pod(?:\s*042)?(?:\*\*|\*|\])?\s*:/i.test(text) ||
+      /^\[POD(?:\s*042)?\]/i.test(text) ||
+      /^(?:\*\*|\*|\[)?(?:Reporte|Propuesta|Alerta|Afirmativo|Negativo|Report|Proposal|Alert|Affirmative|Negative)(?:\*\*|\*|\])?\s*:/i.test(text)) {
     speaker = 'pod';
-    text = text.replace(/^\[POD(?:\s*042)?\]\s*:?\s*/i, '').trim();
-  } else if (/^\[2B\]/i.test(text)) {
+  } else if (/(?:\*\*|\*|\[)?2B(?:\*\*|\*|\])?\s*:/i.test(text) || /^\[2B\]/i.test(text)) {
     speaker = '2b';
-    text = text.replace(/^\[2B\]\s*:?\s*/i, '').trim();
-  } else if (/^(Reporte|Propuesta|Alerta|Afirmativo|Negativo|Report|Proposal|Alert|Affirmative|Negative)\s*:/i.test(text)) {
-    speaker = 'pod';
   }
 
-  // Keep concise for desktop overlay bubble
-  const clean = text.replace(/\s+/g, ' ').slice(0, 280);
-  return { speaker, line: clean, slot, toolCall };
+  // 5. Clean speaker prefixes from the text
+  text = text.replace(/^(?:\*\*|\*|\[)?(?:Pod(?:\s*042)?|2B)(?:\*\*|\*|\])?\s*:?\s*/i, '').trim();
+
+  // 6. Clean markdown emphasis (**bold**, *italic*, __bold__, _italic_, `code`)
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+  text = text.replace(/__([^_]+)__/g, '$1');
+  text = text.replace(/(^|[^\*])\*([^\*]+)\*([^\*]|$)/g, '$1$2$3');
+  text = text.replace(/(^|[^_])_([^_]+)_([^_]|$)/g, '$1$2$3');
+  text = text.replace(/\`([^\`]+)\`/g, '$1');
+
+  // 7. Strip enclosing dialogue quotes: "...", “...”, «...»
+  text = text.replace(/^[\"'“«](.+)[\"'”»]$/, '$1').trim();
+
+  // 8. Normalize whitespace while preserving clear sentences
+  const clean = text.replace(/[ \t]+/g, ' ').replace(/\n+/g, ' ').trim().slice(0, 320);
+  return { speaker, line: clean, slot, toolCall, toolCalls };
+}
+
+
+function cleanAppOrUrlTarget(raw) {
+  let t = String(raw || '').trim();
+  t = t.replace(/^[¿?¡!.,:;"]+|[¿?¡!.,:;"]+$/g, '').trim();
+
+  const leadFillers = [
+    /^(?:por\s+favor\s*,?\s*)/i,
+    /^(?:please\s*,?\s*)/i,
+    /^(?:puedes\s+(?:por\s+favor\s+)?(?:abrir|lanzar|ejecutar|iniciar)\s+)/i,
+    /^(?:podrías\s+(?:por\s+favor\s+)?(?:abrir|lanzar|ejecutar|iniciar)\s+)/i,
+    /^(?:can\s+you\s+(?:please\s+)?(?:open|launch|run|start)\s+)/i,
+    /^(?:could\s+you\s+(?:please\s+)?(?:open|launch|run|start)\s+)/i,
+    /^(?:ábreme|abreme|ábrete|abrete|abre|abrir)\s+/i,
+    /^(?:lanzar?|iniciar?|ejecutar?)\s+/i,
+    /^(?:open|launch|start|run)\s+/i,
+  ];
+
+  for (const re of leadFillers) {
+    if (re.test(t)) {
+      t = t.replace(re, '').trim();
+    }
+  }
+
+  const midFillers = [
+    /^(?:una\s+nueva\s+ventana\s+(?:de\s+)?)/i,
+    /^(?:una\s+ventana\s+(?:de\s+)?)/i,
+    /^(?:a\s+new\s+window\s+(?:of\s+)?)/i,
+    /^(?:a\s+window\s+(?:of\s+)?)/i,
+    /^(?:una\s+nueva\s+pestaña\s+(?:de\s+|en\s+)?)/i,
+    /^(?:una\s+pestaña\s+(?:de\s+|en\s+)?)/i,
+    /^(?:a\s+new\s+tab\s+(?:of\s+|in\s+)?)/i,
+    /^(?:a\s+new\s+)/i,
+    /^(?:una\s+nueva\s+)/i,
+    /^(?:la\s+carpeta\s+(?:de\s+)?)/i,
+    /^(?:el\s+directorio\s+(?:de\s+)?)/i,
+    /^(?:carpeta\s+(?:de\s+)?)/i,
+    /^(?:directorio\s+(?:de\s+)?)/i,
+    /^(?:the\s+folder\s+(?:of\s+)?)/i,
+    /^(?:folder\s+(?:of\s+)?)/i,
+    /^(?:la\s+aplicaci[oó]n\s+(?:de\s+)?)/i,
+    /^(?:el\s+programa\s+(?:de\s+)?)/i,
+    /^(?:the\s+app(?:lication)?\s+(?:of\s+)?)/i,
+    /^(?:the\s+program\s+(?:of\s+)?)/i,
+    /^(?:la\s+web\s+(?:de\s+)?)/i,
+    /^(?:el\s+sitio\s+(?:de\s+)?)/i,
+    /^(?:the\s+website\s+(?:of\s+)?)/i,
+    /^(?:enlace\s+(?:a|de)?\s*)/i,
+    /^(?:url\s+(?:a|de)?\s*)/i,
+    /^(?:link\s+(?:to)?\s*)/i,
+    /^(?:mi\s+|mis\s+|my\s+)/i,
+    /^(?:un\s+|una\s+|el\s+|la\s+|los\s+|las\s+|the\s+|a\s+|an\s+)/i,
+  ];
+
+  for (const re of midFillers) {
+    if (re.test(t)) {
+      t = t.replace(re, '').trim();
+    }
+  }
+
+  t = t.replace(/\s+(?:por\s+favor|please)$/i, '').trim();
+  t = t.replace(/\s+(?:window|ventana)$/i, '').trim();
+  t = t.replace(/^[¿?¡!.,:;"]+|[¿?¡!.,:;"]+$/g, '').trim();
+  return t;
 }
 
 function detectDirectToolIntent(userPrompt) {
-  const p = String(userPrompt || '').trim().toLowerCase();
+  const p = String(userPrompt || '').trim();
+  const lower = p.toLowerCase();
 
-  // Open app / URL
-  const openMatch = p.match(/^(?:abre|abrir|lanzar|ejecuta la aplicaci[oó]n|open|launch|run|start)\s+(?:the\s+)?(?:app(?:lication)?|program|url|link|folder)?\s*(.+)$/i);
-  if (openMatch) {
-    let target = openMatch[1].trim();
-    if (/^(enlace|url|link)\s+/i.test(target)) target = target.replace(/^(enlace|url|link)\s+/i, '');
-    if (/^(el|la|the)\s+/i.test(target)) target = target.replace(/^(el|la|the)\s+/i, '');
-    return { name: 'open_app_or_url', params: { target } };
+  // 1. YouTube direct search & play
+  const ytMatch = p.match(/^(?:busca|buscar|pon|poner|play|search|reproduce|reproducir)\s+(?:en\s+youtube|on\s+youtube)\s+(.+)$/i) ||
+                  p.match(/^(?:youtube)\s+(?:busca|search)?\s*(.+)$/i) ||
+                  p.match(/^(?:abre|abrir|open)\s+youtube\s+(?:y\s+)?(?:busca|pon|search|find)\s+(.+)$/i);
+  if (ytMatch) {
+    const query = encodeURIComponent(ytMatch[1].trim());
+    return { name: 'open_app_or_url', params: { target: `https://www.youtube.com/results?search_query=${query}` } };
   }
 
-  // Media / Volume
-  if (/(?:subir?\s+(?:el\s+)?volumen|volume\s*(?:up|increase|louder))/i.test(p)) return { name: 'media_and_volume', params: { action: 'up', value: 4 } };
-  if (/(?:bajar?\s+(?:el\s+)?volumen|volume\s*(?:down|decrease|lower|quieter))/i.test(p)) return { name: 'media_and_volume', params: { action: 'down', value: 4 } };
-  if (/^(?:silencia|mute|mutear|unmute|silence)$/i.test(p) || /(?:mute\s+volume|silenciar\s+audio)/i.test(p)) return { name: 'media_and_volume', params: { action: 'mute' } };
-  if (/^(?:pausa|play|reproducir|reanuda|pause|resume)$/i.test(p) || /(?:pause\s+music|reproducir\s+m[uú]sica)/i.test(p)) return { name: 'media_and_volume', params: { action: 'play_pause' } };
-  if (/(?:siguiente\s+(?:canci[oó]n|pista)|next\s+(?:track|song))/i.test(p)) return { name: 'media_and_volume', params: { action: 'next' } };
-  if (/(?:(?:canci[oó]n|pista)\s+anterior|previous\s+(?:track|song)|prev\s+(?:track|song))/i.test(p)) return { name: 'media_and_volume', params: { action: 'prev' } };
+  // 2. Google direct search
+  const googleSearchMatch = p.match(/^(?:busca|buscar|googlea|search)\s+(?:en\s+google|on\s+google)\s+(.+)$/i) ||
+                            p.match(/^(?:abre|abrir|open)\s+google\s+(?:y\s+)?(?:busca|search)\s+(.+)$/i);
+  if (googleSearchMatch) {
+    const query = encodeURIComponent(googleSearchMatch[1].trim());
+    return { name: 'open_app_or_url', params: { target: `https://www.google.com/search?q=${query}` } };
+  }
 
-  // Capture active window / screen scan
-  if (/(?:qu[eé]\s+ventana|captura|escanea\s+la\s+pantalla|qu[eé]\s+hay\s+en\s+pantalla|what\s+window|active\s+window|capture\s+screen|scan\s+screen)/i.test(p)) {
+  // 3. Open app / URL (supports natural Spanish & English phrases)
+  const openTrigger = /^(?:ábreme|abreme|ábrete|abrete|abre|abrir|puedes\s+abrir|podrías\s+abrir|can\s+you\s+open|could\s+you\s+open|lanzar?|iniciar?|ejecutar?|open|launch|start|run)\b/i;
+  const openPolite = /^(?:por\s+favor\s*,?\s*|please\s*,?\s*)(?:ábreme|abreme|abre|abrir|open|launch|start|run)\b/i;
+
+  if (openTrigger.test(p) || openPolite.test(p)) {
+    if (!lower.includes('portapapeles') && !lower.includes('clipboard') && !lower.includes('comando') && !lower.includes('command') && !lower.includes('proceso') && !lower.includes('process')) {
+      const target = cleanAppOrUrlTarget(p);
+      if (target) {
+        // Fast-path only for unambiguous direct targets without conjunctions (con, para, de, y busca)
+        if (!/\b(?:con|para|sobre|and|with|for)\b/i.test(target)) {
+          return { name: 'open_app_or_url', params: { target } };
+        }
+      }
+    }
+  }
+
+  // 4. Media / Volume
+  if (/(?:subir?|sube|subele|aumentar?|m[aá]s)\s+(?:el\s+|al\s+)?volumen|volume\s*(?:up|increase|louder)|turn\s+up\s+(?:the\s+)?volume/i.test(p)) {
+    return { name: 'media_and_volume', params: { action: 'up', value: 4 } };
+  }
+  if (/(?:bajar?|baja|bajale|disminuir?|menos)\s+(?:el\s+|al\s+)?volumen|volume\s*(?:down|decrease|lower|quieter)|turn\s+down\s+(?:the\s+)?volume/i.test(p)) {
+    return { name: 'media_and_volume', params: { action: 'down', value: 4 } };
+  }
+  if (/^(?:silencia|mute|mutear|unmute|silence)$/i.test(p) || /(?:mute\s+volume|silenciar\s+(?:el\s+)?audio|silenciar\s+(?:el\s+)?volumen)/i.test(p)) {
+    return { name: 'media_and_volume', params: { action: 'mute' } };
+  }
+  if (/^(?:pausa|play|reproducir|reanuda|pause|resume)$/i.test(p) || /(?:pause\s+music|reproducir\s+m[uú]sica|play\s+music|pon(?:er)?\s+m[uú]sica|quita(?:r)?\s+la\s+m[uú]sica|parar?\s+la\s+m[uú]sica)/i.test(p)) {
+    return { name: 'media_and_volume', params: { action: 'play_pause' } };
+  }
+  if (/(?:siguiente\s+(?:canci[oó]n|pista)|next\s+(?:track|song))/i.test(p)) {
+    return { name: 'media_and_volume', params: { action: 'next' } };
+  }
+  if (/(?:(?:canci[oó]n|pista)\s+anterior|previous\s+(?:track|song)|prev\s+(?:track|song))/i.test(p)) {
+    return { name: 'media_and_volume', params: { action: 'prev' } };
+  }
+
+  // 5. Capture active window / screen scan
+  if (/(?:captura|pantallazo|screenshot|foto\s+de\s+pantalla|qu[eé]\s+ventana|escanea\s+la\s+pantalla|qu[eé]\s+hay\s+en\s+pantalla|what\s+window|active\s+window|capture\s+screen|scan\s+screen)/i.test(p)) {
     return { name: 'capture_active_window', params: {} };
   }
 
-  // Search files
+  // 6. Search files
   const searchMatch = p.match(/^(?:busca|buscar|encuentra|localiza|search|find|locate)\s+(?:for\s+)?(?:archivos?|ficheros?|files?)\s+(?:de|named|matching)?\s*(.+)$/i);
   if (searchMatch) {
     return { name: 'search_files', params: { query: searchMatch[1].trim() } };
   }
 
-  // Clipboard read / write
+  // 7. Clipboard read / write
   if (/(?:lee\s+el\s+portapapeles|qu[eé]\s+tengo\s+copiado|pega\s+el\s+portapapeles|read\s+(?:the\s+)?clipboard|what(?:'s|\s+is)\s+in\s+(?:the\s+)?clipboard)/i.test(p)) {
     return { name: 'read_clipboard', params: {} };
   }
   const copyMatch = p.match(/^(?:copia|copiar|copy)\s+(?:(?:to\s+(?:the\s+)?clipboard|al\s+portapapeles)\s+)?(.+)$/i);
-  if (copyMatch && !p.includes('archivo') && !p.includes('file')) {
+  if (copyMatch && !lower.includes('archivo') && !lower.includes('file')) {
     return { name: 'write_clipboard', params: { text: copyMatch[1].trim() } };
   }
 
-  // Web search
+  // 8. Web search
   const webMatch = p.match(/^(?:busca|buscar|investiga|googlea|web\s+search|search\s+(?:the\s+)?web|google)\s+(?:en\s+(?:la\s+)?web|en\s+internet|en\s+google|for)?\s*(.+)$/i);
-  if (webMatch && (p.includes('web') || p.includes('internet') || p.includes('google') || p.startsWith('google') || p.startsWith('web search'))) {
+  if (webMatch && (lower.includes('web') || lower.includes('internet') || lower.includes('google') || lower.startsWith('google') || lower.startsWith('web search'))) {
     return { name: 'web_search', params: { query: webMatch[1].trim() } };
   }
 
-  // Skills & Memory (Tier 1)
+  // 9. Skills & Memory (Tier 1)
   const loadSkillMatch = p.match(/^(?:carga|cargar|lee|leer|ejecuta|load|run)\s+(?:the\s+|la\s+)?skill\s+([a-z0-9_-]+)/i);
   if (loadSkillMatch) {
     return { name: 'load_skill', params: { filename: loadSkillMatch[1].trim() } };
@@ -196,33 +349,85 @@ function detectDirectToolIntent(userPrompt) {
     return { name: 'update_user_memory', params: { key: memoryMatch[1].trim(), fact: memoryMatch[2].trim() } };
   }
 
-  // Shell command (Tier 2)
+  // 10. Shell command (Tier 2)
   const cmdMatch = p.match(/^(?:ejecuta|corre|ejecutar|correr|run\s+(?:the\s+)?command|exec)\s+(?:el\s+comando\s+)?(.+)$/i);
   if (cmdMatch) {
     return { name: 'run_shell_command', params: { command: cmdMatch[1].trim() } };
   }
 
-  // Kill process (Tier 2)
-  const killMatch = p.match(/^(?:cierra|mata|termina|kill|terminate|stop)\s+(?:el\s+proceso\s+|the\s+process\s+)?(.+)$/i);
+  // 11. Kill process (Tier 2)
+  const killMatch = p.match(/^(?:cierra|mata|termina|kill|terminate|stop)\s+(?:el\s+proceso\s+|the\s+process\s+|la\s+aplicaci[oó]n\s+|la\s+app\s+|el\s+programa\s+)?(.+)$/i);
   if (killMatch) {
-    return { name: 'kill_process', params: { processName: killMatch[1].trim() } };
+    let proc = killMatch[1].trim().replace(/^(?:la|el|los|las|un|una|the|a|an)\s+/i, '').trim();
+    if (!lower.includes('sesion') && !lower.includes('sesión') && !lower.includes('session')) {
+      return { name: 'kill_process', params: { processName: proc } };
+    }
   }
 
   return null;
 }
 
-function spawnHeadlessCli(binCandidates, args, inputText, timeoutMs = 22000) {
+function resolveCliBinary(binName) {
+  const isWin = process.platform === 'win32';
+  const exts = isWin ? ['.exe', '.cmd', '.bat', ''] : [''];
+  const searchDirs = [
+    path.dirname(process.execPath),
+    'D:\\DevTools\\nodejs',
+    path.join(os.homedir(), 'AppData', 'Local', 'agy', 'bin'),
+    path.join(os.homedir(), 'AppData', 'Roaming', 'npm'),
+    path.join(os.homedir(), '.antigravity', 'bin'),
+    path.join(os.homedir(), '.gemini', 'antigravity-cli', 'bin'),
+    ...(process.env.PATH || '').split(path.delimiter).filter(Boolean),
+  ];
+
+  for (const dir of searchDirs) {
+    for (const ext of exts) {
+      const full = path.join(dir, binName + ext);
+      try {
+        if (fs.existsSync(full) && fs.statSync(full).isFile()) {
+          return full;
+        }
+      } catch {}
+    }
+  }
+  return binName;
+}
+
+function spawnHeadlessCli(binPath, args, inputText, timeoutMs = 26000) {
   return new Promise((resolve, reject) => {
     let settled = false;
+    const isWin = process.platform === 'win32';
     const nodeDir = path.dirname(process.execPath);
+    const npmGlobal = isWin ? path.join(os.homedir(), 'AppData', 'Roaming', 'npm') : '';
+    const agyBinDir = isWin ? path.join(os.homedir(), 'AppData', 'Local', 'agy', 'bin') : '';
+    const devToolsNode = isWin ? 'D:\\DevTools\\nodejs' : '';
+
+    const pathParts = [
+      nodeDir,
+      devToolsNode,
+      npmGlobal,
+      agyBinDir,
+      process.env.PATH || '',
+    ].filter(Boolean);
+
     const env = {
       ...process.env,
-      PATH: `${nodeDir};${process.env.PATH || ''}`,
+      PATH: pathParts.join(path.delimiter),
       NO_COLOR: '1',
+      ZEROMATE_INTERNAL: '1',
     };
 
-    const cmd = binCandidates[0];
-    const child = spawn(cmd, args, {
+    const isCmdOrBat = isWin && (binPath.toLowerCase().endsWith('.cmd') || binPath.toLowerCase().endsWith('.bat'));
+
+    let spawnCmd = binPath;
+    let spawnArgs = args;
+
+    if (isCmdOrBat) {
+      spawnCmd = 'cmd.exe';
+      spawnArgs = ['/d', '/s', '/c', binPath, ...args];
+    }
+
+    const child = spawn(spawnCmd, spawnArgs, {
       cwd: ROOT,
       env,
       windowsHide: true,
@@ -268,24 +473,20 @@ function spawnHeadlessCli(binCandidates, args, inputText, timeoutMs = 22000) {
   });
 }
 
-async function askHeadlessCli(providerId, sysPrompt, userPrompt) {
-  const combined = `${sysPrompt}\n\nOperador: ${userPrompt}\nRespuesta:`;
-  const isWin = process.platform === 'win32';
+async function askHeadlessCli(providerId, sysPrompt, userPrompt, model = '') {
+  const binName = providerId === 'agy' ? 'agy' : (providerId === 'claude-cli' ? 'claude' : providerId);
+  const binPath = resolveCliBinary(binName);
 
+  const combined = `[DIRECTIVAS Y CONTEXTO TÁCTICO]\n${sysPrompt}\n\n[SOLICITUD DEL OPERADOR]\n${String(userPrompt).trim()}\n\n[RESPUESTA]\nResponde en personaje ([2B] o [Pod 042]) en 1 o 2 oraciones breves. Si requiere acción, aprendizaje o memoria, emite [TOOL:nombre {"param":"valor"}]. Respuesta:`;
+
+  const args = ['-p', combined];
   if (providerId === 'agy') {
-    // Run via node/cmd completely hidden with windowsHide: true
-    const cmdExe = isWin ? 'cmd.exe' : 'agy';
-    const args = isWin ? ['/d', '/s', '/c', 'agy', '-p', combined] : ['-p', combined];
-    return spawnHeadlessCli([cmdExe], args, '');
+    const chosenModel = model || 'gemini-3.8-flash-low';
+    args.push('--model', chosenModel, '--effort', 'low');
+  } else if (providerId === 'claude-cli' && model) {
+    args.push('--model', model);
   }
-
-  if (providerId === 'claude-cli') {
-    const cmdExe = isWin ? 'cmd.exe' : 'claude';
-    const args = isWin ? ['/d', '/s', '/c', 'claude', '-p', combined] : ['-p', combined];
-    return spawnHeadlessCli([cmdExe], args, '');
-  }
-
-  throw new Error(`Unsupported CLI provider: ${providerId}`);
+  return spawnHeadlessCli(binPath, args, '');
 }
 
 async function askGemini(apiKey, model, sysPrompt, userPrompt) {
@@ -591,7 +792,7 @@ class BrainRouter {
       switch (provider) {
         case 'agy':
         case 'claude-cli':
-          raw = await askHeadlessCli(provider, sysPrompt, prompt);
+          raw = await askHeadlessCli(provider, sysPrompt, prompt, model);
           break;
         case 'gemini':
           raw = await askGemini(keys.gemini || process.env.GEMINI_API_KEY, model, sysPrompt, prompt);
@@ -606,16 +807,27 @@ class BrainRouter {
           raw = await askOllama(cfg.ollamaUrl || 'http://127.0.0.1:11434', model, sysPrompt, prompt);
           break;
         default:
-          raw = await askHeadlessCli('agy', sysPrompt, prompt);
+          raw = await askHeadlessCli('agy', sysPrompt, prompt, model);
           break;
       }
 
       const parsed = parseCharacterReply(raw);
       if (parsed) {
-        if (parsed.toolCall && this.toolEngine) {
-          const executed = await this.executeToolAndFormat(parsed.toolCall.name, parsed.toolCall.params, lang);
-          if (executed) {
-            return { ...executed, provider, offlineFallback: false };
+        if (parsed.toolCalls?.length && this.toolEngine) {
+          let lastExec = null;
+          for (const tc of parsed.toolCalls) {
+            lastExec = await this.executeToolAndFormat(tc.name, tc.params, lang);
+          }
+          if (lastExec) {
+            return {
+              ...lastExec,
+              speaker: parsed.speaker || lastExec.speaker,
+              line: parsed.line || lastExec.line,
+              toolCall: parsed.toolCall,
+              toolCalls: parsed.toolCalls,
+              provider,
+              offlineFallback: false,
+            };
           }
         }
         if (parsed.line) {
@@ -634,4 +846,4 @@ class BrainRouter {
   }
 }
 
-module.exports = { BrainRouter, PROVIDERS };
+module.exports = { BrainRouter, PROVIDERS, parseCharacterReply, detectDirectToolIntent };

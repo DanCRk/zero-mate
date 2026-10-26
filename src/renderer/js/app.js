@@ -31,9 +31,16 @@ async function boot() {
     document.fonts.load('600 16px "Chakra Petch"').catch(() => {}),
     document.fonts.load('400 11px "JetBrains Mono"').catch(() => {}),
   ]);
+  let currentConfig = config;
 
-  const [charImg, podImg, katanaImg, cutinSlash, cutinEyes] = await Promise.all([
+  const [charImg, sitImg, peekImg, sleepImg, spinImg, ceilingImg, satelliteImg, podImg, katanaImg, cutinSlash, cutinEyes] = await Promise.all([
     loadImage(theme.character.spriteUrl),
+    theme.character.sitSpriteUrl ? loadImage(theme.character.sitSpriteUrl).catch(() => null) : Promise.resolve(null),
+    theme.character.peekSpriteUrl ? loadImage(theme.character.peekSpriteUrl).catch(() => null) : Promise.resolve(null),
+    theme.character.sleepSpriteUrl ? loadImage(theme.character.sleepSpriteUrl).catch(() => null) : Promise.resolve(null),
+    theme.character.spinSpriteUrl ? loadImage(theme.character.spinSpriteUrl).catch(() => null) : Promise.resolve(null),
+    theme.character.ceilingSpriteUrl ? loadImage(theme.character.ceilingSpriteUrl).catch(() => null) : Promise.resolve(null),
+    theme.satelliteUrl ? loadImage(theme.satelliteUrl).catch(() => null) : Promise.resolve(null),
     loadImage(theme.companion.spriteUrl),
     loadImage(theme.character.weaponUrl),
     loadImage(theme.character.cutinUrls.slash),
@@ -61,7 +68,7 @@ async function boot() {
     weaponCanvas: document.getElementById('weapon-back'),
     podRoot: document.getElementById('pod'),
     podCanvas: document.getElementById('pod-canvas'),
-    images: { charImg, podImg, katanaImg },
+    images: { charImg, sitImg, peekImg, sleepImg, spinImg, ceilingImg, satelliteImg, podImg, katanaImg },
     fx,
     soundBank,
     panel,
@@ -71,24 +78,30 @@ async function boot() {
   engine.wander = config.wander;
   engine.setScale(config.scale);
 
+  let isAskingBrain = false;
   const handleUserCommand = async (text) => {
+    isAskingBrain = true;
     engine.triggerSlot('tool_work', {
       tag: 'ENLACE IA',
       line: `Reporte: Procesando transmisión — "${text}"`,
     });
-    const res = await host.askBrain(text);
-    if (!res) return;
-    if (res.slot && res.slot !== 'tool_work') {
-      engine.triggerSlot(res.slot);
+    try {
+      const res = await host.askBrain(text);
+      if (!res) return;
+      if (res.slot && res.slot !== 'tool_work') {
+        engine.triggerSlot(res.slot);
+      }
+      soundBank.play(res.speaker === 'pod' ? 'pod-ack' : 'ui-confirm');
+      panel.say({
+        kind: 'reply',
+        speaker: res.speaker || '2b',
+        tag: (res.provider || 'ZEROMATE').toUpperCase(),
+        line: res.line,
+        hold: 12000,
+      });
+    } finally {
+      setTimeout(() => { isAskingBrain = false; }, 4000);
     }
-    soundBank.play(res.speaker === 'pod' ? 'pod-ack' : 'ui-confirm');
-    panel.say({
-      kind: 'info',
-      speaker: res.speaker || '2b',
-      tag: (res.provider || 'ZEROMATE').toUpperCase(),
-      line: res.line,
-      hold: 7000,
-    });
   };
 
   // YoRHa Multi-Brain Config Modal wiring
@@ -101,9 +114,36 @@ async function boot() {
   const keyOpenaiEl = document.getElementById('brain-key-openai');
   const keyClaudeEl = document.getElementById('brain-key-claude');
 
+  
+  const updateModelPlaceholder = (prov) => {
+    switch (prov) {
+      case 'agy':
+        brainModelEl.placeholder = 'gemini-3.8-flash-low (Ligero), gemini-3.8-flash-medium...';
+        break;
+      case 'gemini':
+        brainModelEl.placeholder = 'gemini-2.5-flash (Recomendado), gemini-1.5-flash...';
+        break;
+      case 'openai':
+        brainModelEl.placeholder = 'gpt-4o-mini, gpt-4o...';
+        break;
+      case 'claude-api':
+      case 'claude-cli':
+        brainModelEl.placeholder = 'claude-3-5-haiku-20241022, claude-3-5-sonnet...';
+        break;
+      case 'ollama':
+        brainModelEl.placeholder = 'llama3.2, mistral, qwen2.5...';
+        break;
+      default:
+        brainModelEl.placeholder = 'Por defecto del proveedor...';
+    }
+  };
+
+  brainProviderEl?.addEventListener('change', () => updateModelPlaceholder(brainProviderEl.value));
+
   const openBrainModal = async () => {
     const cfg = await host.getConfig();
     brainProviderEl.value = cfg.brainProvider || 'agy';
+    updateModelPlaceholder(brainProviderEl.value);
     brainModelEl.value = cfg.brainModel || '';
     brainOllamaEl.value = cfg.ollamaUrl || 'http://127.0.0.1:11434';
     keyGeminiEl.value = cfg.brainKeys?.gemini || '';
@@ -146,6 +186,44 @@ async function boot() {
       line: `Reporte: Enrutador vinculado a [${patch.brainProvider.toUpperCase()}].`,
       hold: 4200,
     });
+  });
+
+  const brainPingBtn = document.getElementById('brain-ping-btn');
+  const brainPingStatusEl = document.getElementById('brain-ping-status');
+
+  brainPingBtn?.addEventListener('click', async () => {
+    if (brainPingStatusEl) {
+      brainPingStatusEl.style.display = 'block';
+      brainPingStatusEl.textContent = 'Enviando pulso de diagnóstico al agente de IA activo...';
+      brainPingStatusEl.style.color = '#d8b868';
+    }
+    soundBank.play('pod-scan');
+    try {
+      const start = performance.now();
+      const res = await host.askBrain('Diagnóstico táctico: Confirma el estado operativo del enlace de comunicación en una sola frase breve.');
+      const ms = Math.round(performance.now() - start);
+      soundBank.play(res.offlineFallback ? 'alert-permission' : 'ui-confirm');
+      const statusText = res.offlineFallback
+        ? `[CONTINGENCIA LOCAL / OFFLINE (${ms}ms)]: ${res.line}`
+        : `[EN LÍNEA / ${(res.provider || 'AI').toUpperCase()} (${ms}ms)]: "${res.line}"`;
+      if (brainPingStatusEl) {
+        brainPingStatusEl.textContent = statusText;
+        brainPingStatusEl.style.color = res.offlineFallback ? '#d88848' : '#68d888';
+      }
+      panel.say({
+        kind: res.offlineFallback ? 'alert' : 'info',
+        speaker: res.speaker || 'pod',
+        tag: (res.provider || 'AI').toUpperCase(),
+        line: res.line,
+        hold: 6000,
+      });
+    } catch (err) {
+      soundBank.play('ui-cancel');
+      if (brainPingStatusEl) {
+        brainPingStatusEl.textContent = `[ERROR DE ENLACE]: ${err.message}`;
+        brainPingStatusEl.style.color = '#e05858';
+      }
+    }
   });
 
   let voicePtt = null;
@@ -262,6 +340,7 @@ async function boot() {
   });
 
   host.onConfig((cfg) => {
+    currentConfig = { ...currentConfig, ...cfg };
     soundBank.configure(cfg);
     engine.wander = cfg.wander;
     if (cfg.scale !== engine.scale) engine.setScale(cfg.scale);
@@ -339,8 +418,10 @@ async function boot() {
   host.onHookEvent((evt) => {
     const type = evt.hook_event_name;
     const srcTag = evt.source === 'antigravity' ? 'AGY' : 'CLAUDE';
+    const allowHookAudio = Boolean(currentConfig.hookAudio);
+
     if (type === 'SessionStart') {
-      soundBank.play('pod-ack');
+      if (allowHookAudio) soundBank.play('pod-ack');
       panel.say({
         kind: 'info',
         speaker: 'pod',
@@ -348,28 +429,43 @@ async function boot() {
         hold: 3600,
       });
     } else if (type === 'UserPromptSubmit') {
-      soundBank.play('ui-click');
+      if (allowHookAudio) soundBank.play('ui-click');
       panel.tick(srcTag, 'Analizando directiva del operador...');
     } else if (type === 'PreToolUse' || type === 'SubagentStart') {
       engine.triggerSlot('tool_work', {
         tag: evt.tool_name || srcTag,
         line: `Reporte: Ejecutando herramienta táctica [${evt.tool_name || 'sistema'}].`,
+        silent: !allowHookAudio,
       });
     } else if (type === 'PostToolUseFailure') {
-      soundBank.play('alert');
+      if (allowHookAudio) soundBank.play('alert');
       panel.say({
         kind: 'error',
         speaker: '2b',
         line: `Anomalía detectada en [${evt.tool_name || 'herramienta'}]. Revisando registros.`,
         hold: 4500,
       });
-    } else if (type === 'PermissionRequest') {
+    } else if (
+      type === 'PermissionRequest' ||
+      (type === 'Notification' && (evt.notification_type === 'permission_prompt' || evt.notification_type === 'question'))
+    ) {
+      const cmdText =
+        evt.command ||
+        evt.message ||
+        evt.tool_input?.command ||
+        evt.tool_input?.question ||
+        (typeof evt.tool_input === 'object' ? JSON.stringify(evt.tool_input) : '') ||
+        'Operación en espera de autorización';
+
       engine.triggerSlot('alert_confirm', {
-        tool: evt.tool_name || 'PERMISO',
-        command: evt.command || JSON.stringify(evt.tool_input || {}),
+        tool: evt.tool_name || evt.title || (evt.notification_type === 'question' ? 'PREGUNTA' : 'AUTORIZACIÓN'),
+        command: cmdText,
+        line: evt.notification_type === 'question'
+          ? 'Alerta: El agente requiere confirmación o directiva táctica del operador.'
+          : undefined,
       });
     } else if (type === 'Notification' && evt.message) {
-      soundBank.play('pod-ack');
+      if (allowHookAudio) soundBank.play('pod-ack');
       panel.say({
         kind: 'info',
         speaker: 'pod',
@@ -377,7 +473,9 @@ async function boot() {
         hold: 4500,
       });
     } else if (type === 'Stop' || type === 'SessionEnd') {
-      engine.triggerSlot('victory');
+      if (!isAskingBrain) {
+        engine.triggerSlot('victory', { silent: !allowHookAudio });
+      }
     }
   });
 

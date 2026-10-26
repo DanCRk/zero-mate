@@ -14,6 +14,7 @@ export const NEUTRAL = {
   head: 0, hair: 0, skirt: 0, tilt: 0, bob: 0, sx: 1, sy: 1,
   armL: 0, armR: 0, longL: 1, longR: 1,
   smear: [0, 0], echo: [0, 0], kickL: 0, kickR: 0,
+  pose: 'stand',
 };
 
 export const ACTS = {
@@ -29,15 +30,18 @@ export const ACTS = {
     ],
   },
 
-  // Sitting on a window top frame, legs dangling and swinging gently while hands rest on the ledge
+  // Sitting on a window top frame (2b-sit.png): hands planted on the ledge, boots kicking one after the other like Capri
   sit: {
     loop: true,
     keys: [
-      [7, { kickL: 0.16, kickR: -0.10, hair: -1.1, skirt: -0.8, arms: 0.06, head: 0.02 }],
-      [4, { kickL: 0.03, kickR: 0.03, arms: 0.05, head: 0.03 }],
-      [7, { kickL: -0.10, kickR: 0.16, hair: 1.1, skirt: 0.8, arms: 0.06, head: -0.02 }],
-      [4, { kickL: 0.03, kickR: 0.03, arms: 0.05, head: 0.01 }],
-      [8, { kickL: 0.02, kickR: 0.02, head: 0.05, arms: 0.04 }],
+      [5, { kickL: 0.18, kickR: -0.04, hair: -1.4, arms: 0 }],
+      [2, { kickL: 0.06, kickR: 0.06, arms: 0 }],
+      [5, { kickL: -0.04, kickR: 0.18, hair: 1.4, arms: 0 }],
+      [2, { kickL: 0.06, kickR: 0.06, arms: 0 }],
+      [5, { kickL: 0.18, kickR: -0.04, hair: -1.4, arms: 0 }],
+      [2, { kickL: 0.06, kickR: 0.06, arms: 0 }],
+      [5, { kickL: -0.04, kickR: 0.18, hair: 1.4, arms: 0 }],
+      [10, { kickL: 0.03, kickR: 0.03, head: 0.08, arms: 0 }],
     ],
   },
 
@@ -53,13 +57,18 @@ export const ACTS = {
     ],
   },
 
-  // Pod Glide (Slot: traverse) — 2B holds onto Pod 042 with raised arms while gliding across the screen
+  // Pod Glide (Slot: traverse & Wall Jump Phase 3) — 2B holds onto Pod 042's handles with raised arms,
+  // floating and swaying naturally in the wind stream with realistic leg and dress physics, zero stiff board tilt.
   glide: {
     loop: true,
     fps: 24,
     keys: [
-      [3, { armL: 1.95, armR: 1.85, longL: 1.12, longR: 1.12, hair: -5.5, skirt: -6.5, kickL: -0.18, kickR: -0.12, tilt: 6 }],
-      [3, { armL: 1.98, armR: 1.88, longL: 1.12, longR: 1.12, hair: -7.0, skirt: -8.0, kickL: -0.22, kickR: -0.16, tilt: 7 }],
+      [3, { armL: 1.92, armR: 1.84, longL: 1.10, longR: 1.10, head: 0.05, hair: -5.2, skirt: -6.8, kickL: -0.16, kickR: -0.12, bob: -2, sy: 1.02, sx: 0.99 }],
+      [3, { armL: 1.95, armR: 1.86, longL: 1.12, longR: 1.12, head: 0.07, hair: -7.8, skirt: -9.5, kickL: -0.22, kickR: -0.16, bob: -4, sy: 1.03, sx: 0.985 }],
+      [3, { armL: 1.97, armR: 1.88, longL: 1.13, longR: 1.13, head: 0.08, hair: -9.4, skirt: -11.2, kickL: -0.28, kickR: -0.21, bob: -5, sy: 1.03, sx: 0.985 }],
+      [3, { armL: 1.95, armR: 1.87, longL: 1.12, longR: 1.12, head: 0.07, hair: -8.0, skirt: -9.8, kickL: -0.24, kickR: -0.24, bob: -4, sy: 1.02, sx: 0.99 }],
+      [3, { armL: 1.93, armR: 1.85, longL: 1.11, longR: 1.11, head: 0.05, hair: -6.4, skirt: -7.6, kickL: -0.18, kickR: -0.18, bob: -2, sy: 1.015, sx: 0.995 }],
+      [3, { armL: 1.91, armR: 1.83, longL: 1.09, longR: 1.09, head: 0.04, hair: -5.0, skirt: -6.2, kickL: -0.14, kickR: -0.13, bob: -1, sy: 1.01, sx: 0.995 }],
     ],
   },
 
@@ -82,6 +91,81 @@ export const ACTS = {
     ],
   },
 
+  // Ceiling Hang stance with dedicated 2b-ceiling sprite (hanging upside down)
+  ceiling: {
+    loop: true,
+    keys: [
+      [10, { pose: 'ceiling', head: 0, bob: 0 }],
+      [8,  { pose: 'ceiling', head: 0.04, bob: -1 }],
+      [10, { pose: 'ceiling', head: -0.02, bob: 0 }],
+    ],
+  },
+
+  // Peeking from screen edge with dedicated 2b-peek sprite
+  peek: {
+    loop: true,
+    keys: [
+      [8, { pose: 'peek', head: 0.04, hair: -0.8, bob: 0 }],
+      [6, { pose: 'peek', head: 0.10, hair: 0.6, bob: -1 }],
+      [8, { pose: 'peek', head: 0.06, hair: -0.4, bob: 0 }],
+    ],
+  },
+
+  // Tactical standby / sleep mode with dedicated 2b-sleep sprite
+  sleep: {
+    loop: true,
+    keys: [
+      [12, { pose: 'sleep', head: 0.12, bob: 0, hair: 0.3, skirt: 0.2 }],
+      [14, { pose: 'sleep', head: 0.16, bob: 1.4, hair: 0.6, skirt: 0.4 }],
+      [10, { pose: 'sleep', head: 0.13, bob: 0.5, hair: 0.2, skirt: 0.1 }],
+    ],
+  },
+
+  // Intermittent nodding / dozing while in standby
+  doze: {
+    priority: 2,
+    keys: [
+      [10, { pose: 'sleep', head: 0.18, bob: 1.5 }],
+      [4,  { pose: 'sleep', head: 0.36, bob: 3.5 }],
+      [3,  { pose: 'sleep', head: 0.08, bob: -1.0 }],
+      [8,  { pose: 'sleep', head: 0.14, bob: 0 }],
+    ],
+  },
+
+  // Infiltration dive through digital window portal (Slot: window_breach)
+  dive: {
+    priority: 3,
+    fps: 24,
+    keys: [
+      [3, { bob: 4, head: -0.1, armL: -0.3, armR: -0.3, sx: 1.06, sy: 0.92 }],
+      [2, { bob: -8, head: 0.2, armL: 1.4, armR: 1.4, sx: 0.92, sy: 1.15, smear: [0, -12] }],
+      [4, { bob: -18, head: 0.4, armL: 2.1, armR: 2.1, sx: 0.82, sy: 1.28, smear: [0, -24] }],
+    ],
+  },
+
+  // Acrobatic wall-jump spin off screen borders (Slot: wall_jump_glide)
+  wall_spin: {
+    priority: 3,
+    fps: 24,
+    keys: [
+      [2, { bob: 2, tilt: -15, kickL: -0.4, kickR: 0.3, armL: -0.8, armR: 0.8, smear: [-8, -6] }],
+      [2, { bob: -12, tilt: 60, kickL: 0.5, kickR: -0.4, armL: 1.2, armR: -1.2, smear: [12, -15], echo: [8, 4] }],
+      [3, { bob: -20, tilt: 180, kickL: -0.2, kickR: 0.2, armL: 1.8, armR: 1.8, smear: [18, -12], echo: [14, 6] }],
+      [2, { bob: -12, tilt: 290, kickL: 0.3, kickR: -0.2, armL: 1.9, armR: 1.8, smear: [10, -6] }],
+      [2, { bob: -4, tilt: 0, kickL: 0, kickR: 0, armL: 1.95, armR: 1.85 }],
+    ],
+  },
+
+  // Looking up and reaching hand toward the YoRHa Bunker Satellite (Slot: bunker_uplink)
+  gaze: {
+    priority: 2,
+    keys: [
+      [6, { head: -0.32, armR: 0.85, longR: 1.1, hair: 1.2, bob: -1 }],
+      [14, { head: -0.40, armR: 1.15, longR: 1.18, hair: 1.8, bob: -2 }],
+      [6, { head: -0.34, armR: 0.95, longR: 1.12, hair: 1.4, bob: -1 }],
+    ],
+  },
+
   // ---- One-Shot Acts ----
 
   talk: {
@@ -93,8 +177,8 @@ export const ACTS = {
     priority: 3,
     fps: 24,
     keys: [
-      [2, { sy: 0.92, sx: 1.05, kickL: 0.18, kickR: 0.18, arms: -0.12 }, 'cloth'],
-      [2, { sy: 1.02, sx: 0.99, kickL: 0.08, kickR: 0.08, arms: 0.04 }],
+      [2, { sy: 0.92, sx: 1.05, kickL: 0.22, kickR: 0.22, arms: 0 }, 'cloth'],
+      [2, { sy: 1.02, sx: 0.99, kickL: 0.08, kickR: 0.08, arms: 0 }],
       [1, {}],
     ],
   },
@@ -114,13 +198,14 @@ export const ACTS = {
   inspect_katana: {
     priority: 2,
     directional: true,
+    fps: 24,
     keys: [
-      [2, { head: -0.06, armR: 0.45 }, 'weapon_summon'],
-      [6, { head: 0.12, armR: 1.15, longR: 1.1, skirt: 2.0 }],
-      [8, { head: 0.16, armR: 1.25, longR: 1.12, hair: 2.2 }, 'weapon_shine'],
-      [6, { head: 0.08, armR: 0.85 }],
-      [3, { head: 0, armR: 0.2 }, 'weapon_return'],
-      [1, {}],
+      [3, { head: -0.06, armR: 0.55, armL: -0.12, bob: -1 }, 'weapon_summon'],
+      [6, { head: 0.12, armR: 1.15, armL: 0.65, longL: 1.05, skirt: 1.8, bob: 0 }],
+      [10, { head: 0.16, armR: 1.22, armL: 0.88, longL: 1.08, hair: 1.5, skirt: 1.2, bob: -1 }, 'weapon_shine'],
+      [6, { head: 0.08, armR: 0.95, armL: 0.45, longL: 1.02, bob: 0 }],
+      [4, { head: -0.04, armR: 0.35, armL: 0.05, bob: 1, tilt: -3 }, 'weapon_return'],
+      [2, { arms: 0, tilt: 0 }],
     ],
   },
 
@@ -167,20 +252,27 @@ export const ACTS = {
     ],
   },
 
-  // Slot: victory — Classic 2B spin, blood/dust flick, and mid-air katana sheathe behind her back
+  // Slot: victory — Acrobatic aerial somersault, crescent slash, and mid-air blade twirl sheathe
   victory_sheathe: {
     priority: 4,
     fps: 24,
     directional: true,
     keys: [
-      [2, { sy: 0.88, sx: 1.06, bob: 5, arms: -0.3 }],
-      [2, { sx: 0.5, sy: 1.06, bob: -10, arms: 0.6, echo: [10, 0], skirt: 6.0 }, 'victory_spin'],
-      [2, { sx: -0.5, sy: 1.08, bob: -16, arms: 1.1, echo: [14, 0], skirt: -6.0 }],
-      [2, { sx: 1.0, sy: 1.04, bob: -12, armR: 1.55, armL: -0.3, echo: [8, 0] }, 'victory_flick'],
-      [6, { bob: -6, armR: 1.4, armL: -0.25, head: 0.08 }],
-      [2, { bob: 0, armR: 0.65, head: -0.05, sy: 0.94, sx: 1.04 }, 'victory_lock'],
-      [6, { bob: 0, armR: 0.15, head: 0.06 }, 'speak'],
-      [2, { arms: 0 }],
+      // 1. Preparation crouch before leap
+      [2, { sy: 0.86, sx: 1.08, bob: 8, arms: -0.3, skirt: -2.0 }],
+      // 2. Acrobatic aerial somersault with 2b-acrobat-spin texture
+      [3, { pose: 'spin', sy: 1.06, sx: 1.0, bob: -24, tilt: 80, smear: [12, -18], echo: [10, 6] }, 'victory_spin'],
+      [3, { pose: 'spin', sy: 1.06, sx: 1.0, bob: -32, tilt: 220, smear: [18, -14], echo: [16, 8] }],
+      [2, { pose: 'spin', sy: 1.02, sx: 1.0, bob: -16, tilt: 340, smear: [8, -8] }],
+      // 3. Crisp landing in low combat stance with energy slash
+      [4, { pose: 'stand', sy: 0.90, sx: 1.08, bob: 10, armR: 1.7, armL: -0.4, tilt: 0, skirt: 4.5, smear: [14, 0] }, 'victory_flick'],
+      // 4. Elegant blade flick & twirl
+      [5, { bob: 4, armR: 1.45, armL: -0.2, head: 0.06, skirt: 2.0 }],
+      // 5. Back holster lock with hand resting on hilt
+      [4, { bob: -1, armR: 0.72, armL: 0.1, head: -0.06, sy: 0.96, sx: 1.03 }, 'victory_lock'],
+      // 6. Composed standing pose, hand on hip, looking at operator
+      [8, { bob: 0, armR: 0.22, armL: 0.18, head: 0.05, skirt: 0.5 }, 'speak'],
+      [3, { arms: 0 }],
     ],
   },
 

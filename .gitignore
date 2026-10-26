@@ -24,6 +24,7 @@ Thumbs.db
 # User specific living memory (copied from skills/user-memory.example.ctx on first boot)
 skills/user-memory.ctx
 
-# Project planning & Agent instructions (local only)
-docs/
-AGENTS.md
+# Project planning (local scratch docs)
+docs/*
+!docs/releases/
+!docs/releases/**

@@ -48,15 +48,15 @@ export class WeaponHaloRenderer {
     if (alpha <= 0.05 || this.mode === 'hidden' || glide) return;
 
     const s = this.scale;
-    const cx = w * 0.5 - 12 * s * facing;
-    const cy = h * 0.34 + sit * 18 * s;
+    const cx = w * 0.5 - 10 * s * facing;
+    const cy = h * 0.36 + sit * 14 * s;
     const t = now * 0.001;
 
     ctx.save();
     ctx.globalAlpha = alpha;
 
     // 1. Draw YoRHa geometric golden/white weapon levitation ring (weapon-ring)
-    const ringRadius = 46 * s;
+    const ringRadius = 54 * s;
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(1, 0.36); // Tilted 3D perspective ellipse behind her back
@@ -86,31 +86,86 @@ export class WeaponHaloRenderer {
     }
     ctx.restore();
 
-    // 2. Draw Virtuous Contract katana sprite
+    // 2. Draw Virtuous Treaty Greatsword (manodoble) sprite floating diagonally behind 2B
     if (this.katanaImg) {
       ctx.save();
       const hoverY = Math.sin(t * 2.4) * 4 * s;
-      let kx = cx + 6 * s * facing;
-      let ky = cy + hoverY;
-      let angle = -0.68 * facing;
+      let kx = cx + 4 * s * facing;
+      let ky = cy + 16 * s + hoverY;
+      let angle = -0.82 * facing;
+      let drawGlint = false;
+      let glintProgress = 0;
 
       if (this.mode === 'inspect') {
-        const dt = Math.min(1, (now - this.modeTime) / 300);
-        kx = cx + 32 * s * facing * dt;
-        ky = cy - 10 * s * dt;
-        angle = (-0.25 + Math.sin(t * 5) * 0.08) * facing;
+        const dt = Math.min(1, (now - this.modeTime) / 360);
+        const easeDt = dt * dt * (3 - 2 * dt);
+        kx = cx + (48 * s * facing) * easeDt;
+        ky = cy - (38 * s) * easeDt + Math.sin(t * 3.4) * 3 * s;
+        angle = (-0.16 + Math.sin(t * 4.2) * 0.035) * facing;
+
+        // Blade gleam / glint traveling along the cutting edge
+        const elapsed = now - this.modeTime;
+        if (elapsed > 280 && elapsed < 1600) {
+          drawGlint = true;
+          glintProgress = (elapsed - 280) / 950;
+        }
+      } else if (this.mode === 'slash') {
+        const dt = Math.min(1, (now - this.modeTime) / 220);
+        angle = (-1.85 + Math.sin(dt * Math.PI) * 0.5) * facing;
+        kx = cx + (68 * s * facing);
+        ky = cy + (12 * s);
       } else if (this.mode === 'sheathe') {
-        const dt = (now - this.modeTime) * 0.016;
-        angle = dt * 2.4 * facing;
-        ky = cy - 22 * s;
+        const elapsed = Math.min(1, (now - this.modeTime) / 480);
+        const easeOut = 1 - Math.pow(1 - elapsed, 3);
+        // 360 degree spin returning smoothly to back holster
+        angle = (-0.82 + (1 - easeOut) * Math.PI * 2) * facing;
+        kx = cx + (48 * s * facing) * (1 - easeOut) + (4 * s * facing) * easeOut;
+        ky = cy - (38 * s) * (1 - easeOut) + (16 * s + hoverY) * easeOut;
       }
 
       ctx.translate(kx, ky);
       ctx.rotate(angle);
       if (facing < 0) ctx.scale(-1, 1);
-      const kw = 195 * s;
-      const kh = 68 * s;
-      ctx.drawImage(this.katanaImg, -kw * 0.48, -kh * 0.5, kw, kh);
+      const kw = 305 * s;
+      const kh = 86 * s;
+
+      // Golden energy aura while inspecting or striking
+      if (this.mode === 'inspect' || this.mode === 'slash') {
+        ctx.shadowColor = 'rgba(216, 184, 104, 0.55)';
+        ctx.shadowBlur = 14 * s;
+      }
+
+      ctx.drawImage(this.katanaImg, -kw * 0.45, -kh * 0.5, kw, kh);
+
+      // Traveling 4-point diamond sparkle along the blade edge
+      if (drawGlint && glintProgress <= 1.0) {
+        const gx = -kw * 0.36 + glintProgress * (kw * 0.78);
+        const gy = -kh * 0.08;
+        const gAlpha = Math.sin(glintProgress * Math.PI);
+
+        ctx.save();
+        ctx.fillStyle = `rgba(255, 255, 255, ${gAlpha.toFixed(2)})`;
+        ctx.shadowColor = '#d8b868';
+        ctx.shadowBlur = 12 * s;
+
+        // Core bright spark
+        ctx.beginPath();
+        ctx.arc(gx, gy, 3.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 4-point cross flare
+        ctx.strokeStyle = `rgba(255, 250, 230, ${(gAlpha * 0.9).toFixed(2)})`;
+        ctx.lineWidth = 1.4 * s;
+        ctx.beginPath();
+        ctx.moveTo(gx - 14 * s, gy);
+        ctx.lineTo(gx + 14 * s, gy);
+        ctx.moveTo(gx, gy - 9 * s);
+        ctx.lineTo(gx, gy + 9 * s);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
       ctx.restore();
     }
 
@@ -132,6 +187,7 @@ export class PodCompanion {
     //         'alert' (flying next to cursor blinking red/amber), 'scan' (projecting laser scanner)
     this.state = 'follow';
     this.happyUntil = 0;
+    this.celebrateUntil = 0;
     this.alertBlink = false;
     this.pointer = null;
   }
@@ -154,6 +210,11 @@ export class PodCompanion {
     this.happyUntil = performance.now() + durationMs;
   }
 
+  triggerCelebration(durationMs = 3200) {
+    this.celebrateUntil = performance.now() + durationMs;
+    this.triggerHappy(durationMs + 1000);
+  }
+
   contains(x, y) {
     const halfW = (this.w || 80) * 0.48;
     const halfH = (this.h || 90) * 0.48;
@@ -172,10 +233,17 @@ export class PodCompanion {
     } else if (this.state === 'carry') {
       // Directly above 2B's raised hands during Pod Glide
       this.target.x = charPos.x;
-      this.target.y = charPos.y - 385 * s;
+      this.target.y = charPos.y - 455 * s;
       this.pos.x = this.target.x;
       this.pos.y = this.target.y;
       this.facing = charFacing;
+    } else if (this.state === 'ceiling') {
+      // Tactical sentinel hovering alongside 2B during inverted ceiling hang
+      this.target.x = charPos.x + (charFacing * 92);
+      this.target.y = 56 + Math.sin(t * 2.2) * 4;
+      this.facing = -charFacing;
+      this.pos.x = this.target.x;
+      this.pos.y = this.target.y;
     } else if (this.state === 'pet') {
       // Hovering affectionately right under 2B's outstretched right hand (which is on her -charFacing side)
       // leaning in and bobbing with her patting motion
@@ -192,10 +260,16 @@ export class PodCompanion {
       this.facing = mouse.x >= this.pos.x ? 1 : -1;
     } else {
       // Floating loyally beside 2B's shoulder
+      const isCelebrating = now < (this.celebrateUntil || 0);
+      let celebY = 0;
+      if (isCelebrating) {
+        const pCeleb = 1 - Math.max(0, Math.min(1, (this.celebrateUntil - now) / 3200));
+        celebY = -Math.sin(pCeleb * Math.PI) * 45 * s;
+      }
       const orbitX = charPos.x - charFacing * (108 * s) + Math.cos(t * 1.6) * 8 * s;
-      const orbitY = charPos.y - 330 * s + Math.sin(t * 2.3) * 9 * s;
+      const orbitY = charPos.y - 330 * s + Math.sin(t * 2.3) * 9 * s + celebY;
       this.target.x = clamp(orbitX, 55, view.w - 55);
-      this.target.y = clamp(orbitY, 65, view.h - 65);
+      this.target.y = clamp(orbitY, 40, view.h - 55);
       this.facing = mouse ? (mouse.x >= this.pos.x ? 1 : -1) : charFacing;
     }
 
@@ -213,8 +287,13 @@ export class PodCompanion {
     ctx.save();
     ctx.translate(w * 0.5, h * 0.5);
 
-    const isHappy = now < this.happyUntil || this.state === 'pet';
-    const tilt = this.state === 'pet'
+    const isCelebrating = now < (this.celebrateUntil || 0);
+    const pCeleb = isCelebrating ? 1 - Math.max(0, Math.min(1, (this.celebrateUntil - now) / 3200)) : 0;
+    const celebTilt = -pCeleb * Math.PI * 2; // Full 360-degree backflip rotation
+    const isHappy = now < this.happyUntil || this.state === 'pet' || isCelebrating;
+    const tilt = isCelebrating
+      ? celebTilt
+      : this.state === 'pet'
       ? -0.14 * this.facing + Math.sin(now * 0.018) * 0.14
       : isHappy
         ? Math.sin(now * 0.025) * 0.22
@@ -226,7 +305,7 @@ export class PodCompanion {
 
     // Subtle propulsion thruster ring beneath Pod 042
     ctx.save();
-    ctx.strokeStyle = this.state === 'alert' ? 'rgba(205, 68, 57, 0.7)' : 'rgba(218, 212, 187, 0.55)';
+    ctx.strokeStyle = this.state === 'alert' ? 'rgba(205, 68, 57, 0.7)' : isCelebrating ? 'rgba(216, 184, 104, 0.85)' : 'rgba(218, 212, 187, 0.55)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.ellipse(0, h * 0.34, 22 * s * (0.85 + 0.15 * Math.sin(t * 16)), 5 * s, 0, 0, Math.PI * 2);
@@ -237,11 +316,17 @@ export class PodCompanion {
       ctx.drawImage(this.podImg, -w * 0.46, -h * 0.46, w * 0.92, h * 0.92);
     }
 
-    // Glowing camera lens pulse (amber normally, crimson/amber blinking on alert_confirm)
+    // Glowing camera lens pulse (amber normally, crimson/amber blinking on alert_confirm, brilliant gold on celebrate)
     const lensX = -w * 0.14;
     const lensY = -h * 0.1;
     const isAlert = this.state === 'alert' && Math.floor(now / 160) % 2 === 0;
-    const glowColor = isAlert ? 'rgba(255, 68, 54, 0.85)' : isHappy ? 'rgba(255, 230, 130, 0.9)' : 'rgba(235, 180, 75, 0.55)';
+    const glowColor = isCelebrating
+      ? 'rgba(216, 184, 104, 0.95)'
+      : isAlert
+      ? 'rgba(255, 68, 54, 0.85)'
+      : isHappy
+      ? 'rgba(255, 230, 130, 0.9)'
+      : 'rgba(235, 180, 75, 0.55)';
     const grad = ctx.createRadialGradient(lensX, lensY, 1, lensX, lensY, 16 * s);
     grad.addColorStop(0, glowColor);
     grad.addColorStop(1, 'rgba(235, 180, 75, 0)');
@@ -359,6 +444,21 @@ export class FxLayer {
     const image = this.cutins[kind] || this.cutins.slash;
     if (!image) return Promise.resolve();
     return new Promise((done) => this.add({ type: 'cutin', life, x, y, dir, image, done }));
+  }
+
+  // YoRHa Hacking Window Breach effect (Slot: window_breach)
+  windowBreach(targetRect, { life = 1800 } = {}) {
+    return new Promise((done) => this.add({ type: 'window_breach', life, targetRect, done }));
+  }
+
+  // YoRHa Orbital Bunker Satellite Uplink (Slot: bunker_uplink)
+  satelliteUplink({ satelliteImg, podPosFn, life = 7500 } = {}) {
+    return new Promise((done) => this.add({ type: 'satellite_uplink', life, satelliteImg, podPosFn, done }));
+  }
+
+  // Tactical Standby Diagnostic Hologram (Slot: sleep_standby)
+  diagnosticHologram(podPosFn, charPosFn, { life = 4200 } = {}) {
+    return new Promise((done) => this.add({ type: 'diagnostic_hologram', life, podPosFn, charPosFn, done }));
   }
 
   frame(now) {
@@ -554,6 +654,148 @@ export class FxLayer {
 
         ctx.clip();
         ctx.drawImage(it.image, 0, -20, w, h + 40);
+        ctx.restore();
+        break;
+      }
+
+      case 'window_breach': {
+        const r = it.targetRect;
+        const alpha = t < 0.8 ? 1 : (1 - t) / 0.2;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Digital hacking border pulse along window rect
+        ctx.strokeStyle = YORHA_COLORS.gold;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
+
+        ctx.strokeStyle = YORHA_COLORS.beige;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([12, 8]);
+        ctx.lineDashOffset = -t * 60;
+        ctx.strokeRect(r.x - 6, r.y - 6, r.w + 12, r.h + 12);
+        ctx.setLineDash([]);
+
+        // YoRHa Hacking Geometric Triangles around breach point
+        const cx = r.x + r.w * 0.5;
+        const cy = r.y;
+        for (let i = 0; i < 7; i++) {
+          const triAngle = (i / 7) * Math.PI * 2 + t * 4;
+          const dist = 35 + t * 65 + (i % 2) * 20;
+          const tx = cx + Math.cos(triAngle) * dist;
+          const ty = cy + Math.sin(triAngle) * (dist * 0.45);
+          const triSize = 10 + (i % 3) * 4;
+
+          ctx.save();
+          ctx.translate(tx, ty);
+          ctx.rotate(triAngle + t * 6);
+          ctx.fillStyle = i % 2 === 0 ? YORHA_COLORS.white : YORHA_COLORS.ink;
+          ctx.strokeStyle = YORHA_COLORS.gold;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(0, -triSize);
+          ctx.lineTo(triSize * 0.86, triSize * 0.5);
+          ctx.lineTo(-triSize * 0.86, triSize * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Scanline grid ripple
+        const scanY = r.y + (r.h * (t * 2 % 1));
+        ctx.fillStyle = 'rgba(216, 184, 104, 0.22)';
+        ctx.fillRect(r.x, scanY - 3, r.w, 6);
+        ctx.restore();
+        break;
+      }
+
+      case 'satellite_uplink': {
+        const viewW = this.canvas.width / (window.devicePixelRatio || 1);
+        const satX = lerp(-60, viewW + 60, t);
+        const satY = 52 + Math.sin(t * Math.PI * 4) * 6;
+        const pod = it.podPosFn?.() || { x: viewW * 0.5, y: 350 };
+
+        ctx.save();
+        // 1. Draw YoRHa Bunker Space Station
+        if (it.satelliteImg) {
+          const satW = 110, satH = 55;
+          ctx.drawImage(it.satelliteImg, satX - satW * 0.5, satY - satH * 0.5, satW, satH);
+        }
+
+        // Blinking beacon on satellite
+        if (Math.sin(t * 24) > 0) {
+          ctx.fillStyle = YORHA_COLORS.gold;
+          ctx.beginPath();
+          ctx.arc(satX, satY - 14, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 2. High-speed upward data transmission beam from Pod 042 to Bunker
+        if (t > 0.15 && t < 0.85) {
+          const beamAlpha = Math.sin((t - 0.15) / 0.7 * Math.PI);
+          ctx.globalAlpha = beamAlpha;
+
+          // Outer beam
+          const grad = ctx.createLinearGradient(pod.x, pod.y, satX, satY);
+          grad.addColorStop(0, 'rgba(216, 184, 104, 0.85)');
+          grad.addColorStop(1, 'rgba(247, 245, 235, 0.95)');
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(pod.x, pod.y);
+          ctx.lineTo(satX, satY);
+          ctx.stroke();
+
+          // Ascending digital telemetry squares
+          for (let i = 0; i < 6; i++) {
+            const frac = ((t * 3.5 + i * 0.18) % 1);
+            const px = lerp(pod.x, satX, frac);
+            const py = lerp(pod.y, satY, frac);
+            ctx.fillStyle = i % 2 === 0 ? YORHA_COLORS.gold : YORHA_COLORS.white;
+            ctx.fillRect(px - 3, py - 3, 6, 6);
+          }
+        }
+        ctx.restore();
+        break;
+      }
+
+      case 'diagnostic_hologram': {
+        const pod = it.podPosFn?.() || { x: 300, y: 200 };
+        const char = it.charPosFn?.() || { x: 300, y: 350 };
+        const alpha = t < 0.15 ? t / 0.15 : (t > 0.82 ? (1 - t) / 0.18 : 1);
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.65;
+
+        // Holographic conical projection from Pod lens down to 2B
+        const coneGrad = ctx.createLinearGradient(pod.x, pod.y, char.x, char.y);
+        coneGrad.addColorStop(0, 'rgba(216, 184, 104, 0.7)');
+        coneGrad.addColorStop(1, 'rgba(218, 212, 187, 0.08)');
+        ctx.fillStyle = coneGrad;
+        ctx.beginPath();
+        ctx.moveTo(pod.x, pod.y);
+        ctx.lineTo(char.x - 70, char.y);
+        ctx.lineTo(char.x + 70, char.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Concentric scanning rings at base
+        const ringY = char.y - 10;
+        ctx.strokeStyle = YORHA_COLORS.gold;
+        ctx.lineWidth = 1.2;
+        ctx.save();
+        ctx.translate(char.x, ringY);
+        ctx.scale(1, 0.35);
+        ctx.beginPath();
+        ctx.arc(0, 0, 50 + Math.sin(t * 12) * 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // YoRHa Diagnostic Text
+        ctx.font = '700 9px "Chakra Petch", monospace';
+        ctx.fillStyle = YORHA_COLORS.gold;
+        ctx.fillText('STANDBY // 2B RECHARGE [100%]', char.x - 62, ringY - 24);
         ctx.restore();
         break;
       }

@@ -27,6 +27,7 @@ export class SettingsModal {
     this.volumeSlider = el.querySelector('#setting-volume');
     this.volumeVal = el.querySelector('#setting-volume-val');
     this.muteChk = el.querySelector('#setting-mute');
+    this.hookAudioChk = el.querySelector('#setting-hook-audio');
 
     // Behavior inputs
     this.wanderChk = el.querySelector('#setting-wander');
@@ -175,6 +176,13 @@ export class SettingsModal {
       this.host.setConfig({ muted });
     });
 
+    // General: Hook Audio Mute
+    this.hookAudioChk?.addEventListener('change', () => {
+      const hookAudio = !this.hookAudioChk.checked;
+      this.sound.play(hookAudio ? 'ui-confirm' : 'ui-cancel');
+      this.host.setConfig({ hookAudio });
+    });
+
     // Behavior: Wander
     this.wanderChk?.addEventListener('change', () => {
       const wander = this.wanderChk.checked;
@@ -205,6 +213,31 @@ export class SettingsModal {
     this.openBrainBtn?.addEventListener('click', () => {
       this.sound.play('ui-open');
       this.openBrainModal?.();
+    });
+
+    // Behavior: Quick ping active AI
+    document.getElementById('btn-quick-ping-ai')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-quick-ping-ai');
+      const prevText = btn.textContent;
+      btn.textContent = '[ PINGING... ]';
+      btn.disabled = true;
+      this.sound.play('pod-scan');
+      try {
+        const res = await this.host.askBrain('Diagnóstico táctico: Confirma el estado del enlace en una frase.');
+        this.sound.play(res.offlineFallback ? 'alert-permission' : 'ui-confirm');
+        this.engine.panel.say({
+          kind: res.offlineFallback ? 'alert' : 'info',
+          speaker: res.speaker || 'pod',
+          tag: (res.provider || 'AI').toUpperCase(),
+          line: res.line,
+          hold: 5000,
+        });
+      } catch (err) {
+        this.sound.play('ui-cancel');
+      } finally {
+        btn.textContent = prevText;
+        btn.disabled = false;
+      }
     });
 
     // Behavior: Proactive minutes
@@ -238,7 +271,7 @@ export class SettingsModal {
         } else if (slot === 'alert_confirm') {
           await this.engine.triggerSlot('alert_confirm', { details: 'TEST_PERMISSION_OVERRIDE' });
         } else {
-          await this.engine.triggerSlot(slot);
+          await this.engine.triggerSlot(slot, { arg, side: arg });
         }
       });
     });
@@ -303,6 +336,10 @@ export class SettingsModal {
 
     if (typeof cfg.muted === 'boolean' && this.muteChk) {
       this.muteChk.checked = cfg.muted;
+    }
+
+    if (typeof cfg.hookAudio === 'boolean' && this.hookAudioChk) {
+      this.hookAudioChk.checked = !cfg.hookAudio;
     }
 
     if (typeof cfg.wander === 'boolean' && this.wanderChk) {

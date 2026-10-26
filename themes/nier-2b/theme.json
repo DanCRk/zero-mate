@@ -5,12 +5,18 @@
     "name": "2B",
     "fullName": "YoRHa No.2 Type B",
     "sprite": "assets/2b-full.png",
+    "sitSprite": "assets/2b-sit.png",
+    "peekSprite": "assets/2b-peek.png",
+    "ceilingSprite": "assets/2b-ceiling.png",
+    "sleepSprite": "assets/2b-sleep.png",
     "weapon": "assets/katana.png",
     "portrait": "assets/portrait-2b.png",
     "cutins": {
       "slash": "assets/cutin-slash.png",
       "eyes": "assets/cutin-eyes.png"
-    }
+    },
+    "spinSprite": "assets/2b-acrobat-spin.png",
+    "wallAnchorSprite": "assets/2b-peek.png"
   },
   "companion": {
     "name": "Pod 042",
@@ -31,41 +37,102 @@
   "slots": {
     "sit_window": {
       "animation": "walk_and_sit_ledge",
-      "sounds": ["footstep-metal", "cloth-rustle"]
+      "sounds": [
+        "footstep-metal",
+        "cloth-rustle"
+      ]
     },
     "traverse": {
       "animation": "pod_glide",
-      "sounds": ["pod-glide", "cloth-rustle"]
+      "sounds": [
+        "pod-glide",
+        "cloth-rustle"
+      ]
     },
     "idle_quirk": {
       "animation": "katana_inspect_or_pet_pod",
-      "sounds": ["weapon-hum", "pod-happy-chirp"]
+      "sounds": [
+        "weapon-hum",
+        "pod-happy-chirp"
+      ]
     },
     "companion_interact": {
       "animation": "pet_pod_affection",
-      "sounds": ["pod-happy-chirp"]
+      "sounds": [
+        "pod-happy-chirp"
+      ]
     },
     "poke_annoyed": {
       "animation": "katana_slash_cursor",
-      "sounds": ["katana-slash"]
+      "sounds": [
+        "katana-slash"
+      ]
     },
     "tool_work": {
       "animation": "arms_crossed_pod_scan",
-      "sounds": ["pod-scan", "pod-fire"]
+      "sounds": [
+        "pod-scan",
+        "pod-fire"
+      ]
     },
     "alert_confirm": {
       "animation": "pod_fly_to_cursor_alert",
-      "sounds": ["alert-permission"]
+      "sounds": [
+        "alert-permission"
+      ]
     },
     "victory": {
       "animation": "katana_spin_sheathe",
-      "sounds": ["katana-sheathe", "ui-confirm"]
+      "sounds": [
+        "katana-sheathe",
+        "ui-confirm"
+      ]
     },
     "stow": {
       "animation": "bunker_transport_pod_remain",
-      "sounds": ["bunker-transport"]
+      "sounds": [
+        "bunker-transport"
+      ]
+    },
+    "edge_peek": {
+      "animation": "edge_peek_surveillance",
+      "sounds": [
+        "cloth-rustle",
+        "ui-open"
+      ]
+    },
+    "window_breach": {
+      "animation": "hack_dive_window_portal",
+      "sounds": [
+        "pod-scan",
+        "bunker-transport"
+      ]
+    },
+    "wall_jump_glide": {
+      "animation": "wall_jump_spin_glide",
+      "sounds": [
+        "katana-slash",
+        "pod-glide",
+        "footstep-metal"
+      ]
+    },
+    "bunker_uplink": {
+      "animation": "satellite_orbital_uplink",
+      "sounds": [
+        "weapon-hum",
+        "pod-scan",
+        "ui-confirm"
+      ]
+    },
+    "sleep_standby": {
+      "animation": "tactical_standby_doze",
+      "sounds": [
+        "cloth-rustle",
+        "talk-blip"
+      ]
     }
   },
+  "satellite": "assets/bunker-satellite.png",
   "sounds": {
     "ui-open": "sounds/ui-open.wav",
     "ui-confirm": "sounds/ui-confirm.wav",

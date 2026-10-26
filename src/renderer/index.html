@@ -94,8 +94,19 @@
           </select>
         </label>
         <label class="brain-modal__field">
-          <span>MODELO (OPCIONAL — EJ. gemini-2.5-flash, llama3.2, gpt-4o-mini)</span>
-          <input id="brain-model" class="chat-bar__input" type="text" placeholder="Por defecto del proveedor..." />
+          <span>MODELO (OPCIONAL — SELECCIONA O ESCRIBE)</span>
+          <input id="brain-model" class="chat-bar__input" type="text" list="brain-model-list" placeholder="Por defecto del proveedor..." />
+          <datalist id="brain-model-list">
+            <option value="gemini-3.8-flash-low">AGY: Gemini 3.8 Flash Low (Ultraligero y Rápido)</option>
+            <option value="gemini-3.8-flash-medium">AGY: Gemini 3.8 Flash Medium</option>
+            <option value="gemini-3.8-flash-high">AGY: Gemini 3.8 Flash High</option>
+            <option value="claude-sonnet-5-5-low">AGY: Claude Sonnet 5.5 Low</option>
+            <option value="gemini-2.5-flash">Gemini API: gemini-2.5-flash (Recomendado)</option>
+            <option value="gemini-1.5-flash">Gemini API: gemini-1.5-flash</option>
+            <option value="gpt-4o-mini">OpenAI: gpt-4o-mini</option>
+            <option value="claude-3-5-haiku-20241022">Claude: Haiku</option>
+            <option value="llama3.2">Ollama: llama3.2</option>
+          </datalist>
         </label>
         <label class="brain-modal__field">
           <span>URL OLLAMA LOCAL</span>
@@ -114,9 +125,11 @@
           <input id="brain-key-claude" class="chat-bar__input" type="password" placeholder="sk-ant-..." />
         </label>
         <div class="brain-modal__actions">
+          <button type="button" id="brain-ping-btn" class="yorha-btn">[ TEST CONNECTION / PING AI ]</button>
           <button type="button" id="brain-cancel-btn" class="yorha-btn">[ CANCELAR ]</button>
           <button type="submit" class="yorha-btn">[ GUARDAR ENLACE ]</button>
         </div>
+        <div id="brain-ping-status" class="brain-ping-status" style="margin-top:10px;font-size:11px;font-family:'JetBrains Mono',monospace;color:#d8b868;line-height:1.4;display:none;"></div>
       </form>
     </div>
   </section>
@@ -180,10 +193,18 @@
 
           <div class="settings-row settings-row--toggle">
             <div>
-              <label for="setting-mute" class="settings-label">Mute All Audio (Silenciar)</label>
+              <label for="setting-mute" class="settings-label">Mute All Audio (Silenciar Todo)</label>
               <div class="settings-desc">Silencia todos los efectos de menú y sonido de 2B y Pod 042</div>
             </div>
             <input type="checkbox" id="setting-mute" class="settings-checkbox" />
+          </div>
+
+          <div class="settings-row settings-row--toggle">
+            <div>
+              <label for="setting-hook-audio" class="settings-label">Mute Passive Hook SFX (Silenciar audio de hooks)</label>
+              <div class="settings-desc">Desactiva los sonidos repetitivos de comandos y herramientas del IDE / Terminal</div>
+            </div>
+            <input type="checkbox" id="setting-hook-audio" class="settings-checkbox" />
           </div>
         </div>
 
@@ -217,6 +238,7 @@
                 <option value="openai">OpenAI API</option>
                 <option value="claude-api">Anthropic Claude API</option>
               </select>
+              <button type="button" id="btn-quick-ping-ai" class="yorha-btn yorha-btn--mini" title="Test Connection / Ping AI">[ PING AI ]</button>
               <button type="button" id="btn-open-brain-keys" class="yorha-btn yorha-btn--mini" title="Configurar API Keys / Modelos">[ LLAVES / KEYS ]</button>
             </div>
           </div>
@@ -281,12 +303,42 @@
               <span class="sandbox-btn__code">[ victory ]</span>
               <span class="sandbox-btn__label">Victory Sheathe</span>
             </button>
+            <button type="button" class="yorha-btn sandbox-btn" data-slot="edge_peek" data-arg="left">
+              <span class="sandbox-btn__code">[ edge_peek: left ]</span>
+              <span class="sandbox-btn__label">Peek Left Border</span>
+            </button>
+            <button type="button" class="yorha-btn sandbox-btn" data-slot="edge_peek" data-arg="right">
+              <span class="sandbox-btn__code">[ edge_peek: right ]</span>
+              <span class="sandbox-btn__label">Peek Right Border</span>
+            </button>
+            <button type="button" class="yorha-btn sandbox-btn" data-slot="edge_peek" data-arg="top">
+              <span class="sandbox-btn__code">[ edge_peek: top ]</span>
+              <span class="sandbox-btn__label">Ceiling Hang</span>
+            </button>
+            <button type="button" class="yorha-btn sandbox-btn" data-slot="window_breach">
+              <span class="sandbox-btn__code">[ window_breach ]</span>
+              <span class="sandbox-btn__label">Hack Infiltration Dive</span>
+            </button>
+            <button type="button" class="yorha-btn sandbox-btn" data-slot="wall_jump_glide">
+              <span class="sandbox-btn__code">[ wall_jump_glide ]</span>
+              <span class="sandbox-btn__label">Acrobatic Wall Jump</span>
+            </button>
+            <button type="button" class="yorha-btn sandbox-btn" data-slot="sleep_standby">
+              <span class="sandbox-btn__code">[ sleep_standby ]</span>
+              <span class="sandbox-btn__label">Diagnostic Sleep</span>
+            </button>
+            <button type="button" class="yorha-btn sandbox-btn" data-slot="bunker_uplink">
+              <span class="sandbox-btn__code">[ bunker_uplink ]</span>
+              <span class="sandbox-btn__label">Satellite Uplink Beam</span>
+            </button>
           </div>
 
           <div class="sandbox-section-title" style="margin-top:14px;">FORCE STANCE / POSE (FORZAR POSTURA)</div>
           <div class="stance-group">
             <button type="button" class="yorha-btn yorha-btn--mini stance-btn" data-stance="stand">Stand</button>
             <button type="button" class="yorha-btn yorha-btn--mini stance-btn" data-stance="sit">Sit</button>
+            <button type="button" class="yorha-btn yorha-btn--mini stance-btn" data-stance="peek">Peek</button>
+            <button type="button" class="yorha-btn yorha-btn--mini stance-btn" data-stance="sleep">Sleep</button>
             <button type="button" class="yorha-btn yorha-btn--mini stance-btn" data-stance="walk">Walk</button>
             <button type="button" class="yorha-btn yorha-btn--mini stance-btn" data-stance="glide">Glide</button>
             <button type="button" class="yorha-btn yorha-btn--mini stance-btn" data-stance="work">Work</button>

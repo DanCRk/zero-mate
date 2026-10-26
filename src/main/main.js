@@ -37,7 +37,7 @@ const brainRouter = new BrainRouter({ getConfig: () => config.load(), toolEngine
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const DEV = process.argv.includes('--dev');
-const PORT = Number(process.env.ZEROMATE_PORT || process.env.YORHA_PORT) || 47823;
+const PORT = Number(process.env.ZEROMATE_PORT || process.env.YORHA_PORT) || 47824;
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'zeromate', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
@@ -229,7 +229,8 @@ function rebuildTray() {
     {
       label: isEs ? `Audio (${themeName})` : `Audio (${themeName})`,
       submenu: [
-        { label: isEs ? 'Silenciar' : 'Mute', type: 'checkbox', checked: cfg.muted, click: (item) => updateConfig({ muted: item.checked }) },
+        { label: isEs ? 'Silenciar Todo' : 'Mute All', type: 'checkbox', checked: cfg.muted, click: (item) => updateConfig({ muted: item.checked }) },
+        { label: isEs ? 'Silenciar audio de hooks (Terminal / IDE)' : 'Mute passive hook SFX (Terminal / IDE)', type: 'checkbox', checked: !cfg.hookAudio, click: (item) => updateConfig({ hookAudio: !item.checked }) },
         { type: 'separator' },
         {
           label: isEs ? 'Abrir carpeta de sonidos del tema' : 'Open theme sounds directory',
@@ -334,7 +335,7 @@ function registerIpc() {
   ipcMain.handle('theme:list', () => listThemes());
   ipcMain.handle('stt:transcribe', async (_e, pcm16k) => {
     const lang = config.load().lang === 'en' ? 'en' : 'es';
-    return transcribePcm16k(pcm16k, { lang });
+    return transcribePcm16k(pcm16k, lang);
   });
   ipcMain.handle('brain:ask', async (_e, prompt, opts = {}) => brainRouter.ask(prompt, opts));
   ipcMain.handle('brain:providers', () => brainRouter.listProviders());
