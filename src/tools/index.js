@@ -48,6 +48,17 @@ function resolveTarget(rawTarget) {
   }
 
   // 2. Known popular websites / web services
+  const ytMatch = lower.match(/^youtube\s+(?:con\s+|de\s+|search\s+)?(.+)$/i);
+  if (ytMatch) {
+    const q = encodeURIComponent(ytMatch[1].trim());
+    return { type: 'url', target: `https://www.youtube.com/results?search_query=${q}` };
+  }
+  const googleMatch = lower.match(/^google\s+(?:con\s+|de\s+|search\s+)?(.+)$/i);
+  if (googleMatch) {
+    const q = encodeURIComponent(googleMatch[1].trim());
+    return { type: 'url', target: `https://www.google.com/search?q=${q}` };
+  }
+
   const SITES = {
     'youtube': 'https://www.youtube.com',
     'google': 'https://www.google.com',
