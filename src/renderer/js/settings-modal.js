@@ -238,7 +238,7 @@ export class SettingsModal {
         } else if (slot === 'alert_confirm') {
           await this.engine.triggerSlot('alert_confirm', { details: 'TEST_PERMISSION_OVERRIDE' });
         } else {
-          await this.engine.triggerSlot(slot);
+          await this.engine.triggerSlot(slot, { arg, side: arg });
         }
       });
     });

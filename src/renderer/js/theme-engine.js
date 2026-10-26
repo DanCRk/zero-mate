@@ -73,15 +73,44 @@ export const NIER_DIALOGUES = {
   stow_in: [
     'Transferencia desde el Búnker completada. 2B de vuelta en el escritorio.',
   ],
+  edge_peek: [
+    'Reporte: Vigilancia perimetral en curso desde el borde de pantalla.',
+    'Ángulo de observación óptimo asegurado.',
+  ],
+  edge_peek_top: [
+    'Propuesta: Infiltración aérea suspendida con apoyo de Pod 042.',
+    'Vigilancia vertical iniciada.',
+  ],
+  window_breach: [
+    'Iniciando secuencia de hackeo YoRHa. Brecha dimensional establecida.',
+    'Reporte: Desplazamiento a través del espacio digital completado.',
+  ],
+  wall_jump_glide: [
+    'Maniobra acrobática ejecutada. Enlace táctico con Pod 042.',
+    'Impulso cinético confirmado. Iniciando planeo aéreo.',
+  ],
+  sleep_standby: [
+    'Modo de espera táctico activado. Sistemas en baja potencia.',
+    'Reporte: Diagnóstico de sistemas YoRHa en proceso.',
+  ],
+  sleep_wake: [
+    'Reanudando actividad operativa. Sistemas al 100%.',
+    'Modo reposo interrumpido. Lista para combate.',
+  ],
+  bunker_uplink: [
+    'Reporte: Telemetría orbital alineada. Sincronizando datos con el Búnker YoRHa.',
+    'Enlace con satélite orbital confirmado. Descarga de directivas completada.',
+  ],
 };
 
 export class ThemeEngine {
   constructor({ charRoot, spriteCanvas, weaponCanvas, podRoot, podCanvas, images, fx, soundBank, panel, theme }) {
     this.root = charRoot;
     this.canvas = spriteCanvas;
-    this.sprite = new SpriteRenderer(spriteCanvas, images.charImg);
+    this.sprite = new SpriteRenderer(spriteCanvas, images.charImg, images.sitImg, images.peekImg, images.sleepImg);
     this.weapon = new WeaponHaloRenderer(weaponCanvas, images.katanaImg);
     this.pod = new PodCompanion(podRoot, podCanvas, images.podImg);
+    this.satelliteImg = images.satelliteImg || null;
     this.fx = fx;
     this.sound = soundBank;
     this.panel = panel;
@@ -91,7 +120,12 @@ export class ThemeEngine {
     this.view = { w: innerWidth, h: innerHeight };
     this.pos = { x: innerWidth - 220, y: innerHeight - 6 };
     this.facing = 1;
-    this.stance = 'stand'; // stand | sit | walk | glide | work | fall
+    this.stance = 'stand'; // stand | sit | walk | glide | work | fall | peek | sleep
+    this.mode = 'idle'; // idle | sleep | peek | breach | wall_jump
+    this.peekSide = null; // 'left' | 'right' | 'top'
+    this.peekUntil = 0;
+    this.nextDoze = 0;
+    this.lastUserInteraction = performance.now();
     this.perch = null;
     this.windows = { fg: 0, wins: [] };
     this.busy = false;
@@ -106,6 +140,7 @@ export class ThemeEngine {
       smear: [0, 0], echo: [0, 0],
       glitch: 0, glitchSeed: 0, split: 0, collapse: 0, dissolve: 0, bunker: 0,
       sil: [0.1, 0.1, 0.09], silAmount: 0, misreg: [0.0, 0.0], alpha: 1,
+      pose: 'stand',
     };
 
     this.bob = 0;
@@ -132,6 +167,9 @@ export class ThemeEngine {
     this.nextQuirk = now + rand(12000, 24000);
 
     this.alphaMap = this.buildAlphaMap(images.charImg);
+    this.sitAlphaMap = images.sitImg ? this.buildAlphaMap(images.sitImg) : null;
+    this.peekAlphaMap = images.peekImg ? this.buildAlphaMap(images.peekImg) : null;
+    this.sleepAlphaMap = images.sleepImg ? this.buildAlphaMap(images.sleepImg) : null;
     this.setScale(this.scale);
     this.bindInteractions();
     this.loop = this.loop.bind(this);
@@ -200,21 +238,25 @@ export class ThemeEngine {
     this.onChatAnchor?.({ x: this.pod.pos.x, y: this.pod.pos.y - 45 }, this.view);
   }
 
-  // Pixel-accurate hit test on 2B's sprite
+  // Pixel-accurate hit test on 2B's sprite (supports standing, seated, peek, sleep)
   hitCharacter(x, y) {
     if (this.stowed || this.p.alpha < 0.3) return false;
     const s = this.scale;
     const fy = this.pos.y + this.bob;
     const sx = SPRITE.feet.x + ((x - this.pos.x) / s) * this.facing;
     let sy = SPRITE.feet.y - (fy - y) / s;
-    if (this.p.sit > 0 && sy > SPRITE.hip) {
+    const useSitMap = Boolean(this.sitAlphaMap && (this.p.sit > 0.5 || this.p.pose === 'sit'));
+    const usePeekMap = Boolean(this.peekAlphaMap && (this.stance === 'peek' || this.p.pose === 'peek'));
+    const useSleepMap = Boolean(this.sleepAlphaMap && (this.stance === 'sleep' || this.p.pose === 'sleep'));
+    if (!useSitMap && !usePeekMap && !useSleepMap && this.p.sit > 0 && sy > SPRITE.hip) {
       const c = lerp(1, 0.42, this.p.sit);
       sy = sy <= SPRITE.hip + THIGH * c ? SPRITE.hip + (sy - SPRITE.hip) / c : sy + THIGH * (1 - c);
     }
+    const map = usePeekMap ? this.peekAlphaMap : (useSleepMap ? this.sleepAlphaMap : (useSitMap ? this.sitAlphaMap : this.alphaMap));
     for (const [dx, dy] of [[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4]]) {
       const px = Math.round(sx + dx), py = Math.round(sy + dy);
       if (px < 0 || py < 0 || px >= SPRITE.width || py >= SPRITE.height) continue;
-      if (this.alphaMap[(py * SPRITE.width + px) * 4 + 3] > 40) return true;
+      if (map[(py * SPRITE.width + px) * 4 + 3] > 40) return true;
     }
     return false;
   }
@@ -246,7 +288,7 @@ export class ThemeEngine {
   }
 
   seat(win, dx) {
-    return { x: win.x + dx, y: win.y + 6 + (SPRITE.feet.y - SPRITE.hip) * this.scale };
+    return { x: win.x + dx, y: win.y + 3 + (SPRITE.feet.y - SPRITE.hip) * this.scale };
   }
 
   canSit(win) {
@@ -299,53 +341,42 @@ export class ThemeEngine {
         return this.slotVictory(opts);
       case 'stow':
         return this.slotStow(opts);
+      case 'edge_peek':
+      case 'peek':
+        return this.slotEdgePeek(opts);
+      case 'unpeek':
+        return this.unpeek(opts);
+      case 'window_breach':
+      case 'breach':
+        return this.slotWindowBreach(opts);
+      case 'wall_jump_glide':
+      case 'wall_jump':
+        return this.slotWallJumpGlide(opts);
+      case 'sleep_standby':
+      case 'sleep':
+        return this.slotSleepStandby(opts);
+      case 'wake':
+        return this.wake(opts);
+      case 'bunker_uplink':
+      case 'uplink':
+        return this.slotBunkerUplink(opts);
       default:
         break;
     }
   }
 
-  // SLOT 1: sit_window — 2B glides to a window's top frame, walks along the border, and sits down
+  // SLOT 1: sit_window — 2B glides directly onto a window's top frame and sits down dangling her legs (like Capri's sitOn)
   async slotSitWindow(opts = {}) {
     if (this.stowed || this.busy) return;
     const seat = opts.seat || this.pickSeat();
     if (!seat) {
-      // No open floating window with room above: walk along the taskbar floor and sit/perch
       await this.slotTraverse({ to: { x: rand(180, this.view.w - 180), y: this.floor } });
       return;
     }
 
     const { win, dx } = seat;
-    const startDx = clamp(dx + (Math.random() < 0.5 ? -90 : 90), 55, win.w - 65);
-    const landPt = this.seat(win, startDx);
     const finalPt = this.seat(win, dx);
-
-    // First glide to the window edge if not already on this window
-    if (this.perch?.id !== win.id || Math.abs(this.pos.y - landPt.y) > 25) {
-      await this.podGlideTo(landPt);
-    }
-
-    // Walk along the window top frame to the target seat spot
-    this.busy = true;
-    const walkDist = finalPt.x - this.pos.x;
-    if (Math.abs(walkDist) > 16) {
-      this.facing = walkDist < 0 ? 1 : -1;
-      this.setStance('walk');
-      const steps = Math.max(8, Math.round(Math.abs(walkDist) / 7));
-      const startX = this.pos.x;
-      for (let i = 1; i <= steps; i++) {
-        this.pos.x = lerp(startX, finalPt.x, i / steps);
-        this.pos.y = finalPt.y - (SPRITE.feet.y - SPRITE.hip) * this.scale * 0.15;
-        if (i % 4 === 0) this.sound.play('footstep-metal', { gain: 0.55 });
-        this.drawFrame();
-        await sleep(ON_ONES);
-      }
-    }
-
-    this.pos = { ...finalPt };
-    this.setStance('sit', { perch: { id: win.id, dx } });
-    this.sound.play('cloth-rustle');
-    await this.perform('plop');
-    this.busy = false;
+    await this.podGlideTo(finalPt, { stance: 'sit', perch: { id: win.id, dx } });
 
     if (opts.announce !== false) {
       this.panel.say({
@@ -663,6 +694,271 @@ export class ThemeEngine {
     this.busy = false;
   }
 
+  // SLOT: edge_peek — 2B peeks/holds screen edges or hangs from ceiling with Pod 042
+  async slotEdgePeek(opts = {}) {
+    if (this.stowed || this.busy) return;
+    const side = opts.side || opts.arg || pick(['left', 'right', 'top']);
+    this.busy = true;
+    this.mode = 'peek';
+    this.peekSide = side;
+    this.peekUntil = performance.now() + rand(8000, 12000);
+
+    this.sound.play('cloth-rustle', { gain: 0.65 });
+    if (side === 'left') {
+      this.facing = 1;
+      this.pos.x = 42;
+      this.pos.y = this.floor;
+      this.setStance('peek');
+      this.weapon.setMode('hidden');
+      this.pod.pos = { x: 95, y: this.pos.y - 180 };
+    } else if (side === 'right') {
+      this.facing = -1;
+      this.pos.x = this.view.w - 42;
+      this.pos.y = this.floor;
+      this.setStance('peek');
+      this.weapon.setMode('hidden');
+      this.pod.pos = { x: this.view.w - 95, y: this.pos.y - 180 };
+    } else {
+      this.facing = Math.random() < 0.5 ? 1 : -1;
+      this.pos.x = clamp(rand(200, this.view.w - 200), 160, this.view.w - 160);
+      this.pos.y = 80 + (SPRITE.feet.y - SPRITE.hip) * this.scale;
+      this.setStance('peek');
+      this.weapon.setMode('hidden');
+      this.pod.state = 'carry';
+      this.pod.pos = { x: this.pos.x, y: 35 };
+    }
+
+    if (opts.announce !== false) {
+      this.panel.say({
+        kind: 'info',
+        speaker: 'pod',
+        line: side === 'top' ? pick(NIER_DIALOGUES.edge_peek_top) : pick(NIER_DIALOGUES.edge_peek),
+        hold: 3800,
+      });
+    }
+
+    this.busy = false;
+  }
+
+  async unpeek(opts = {}) {
+    if (this.stance !== 'peek') return;
+    if (this.peekSide === 'top') {
+      this.mode = 'idle';
+      this.peekSide = null;
+      this.pod.state = 'follow';
+      this.weapon.setMode('back');
+      this.sound.play('footstep-metal');
+      this.fall();
+      return;
+    }
+    this.busy = true;
+    this.mode = 'idle';
+    const side = this.peekSide;
+    this.peekSide = null;
+    this.sound.play('cloth-rustle', { gain: 0.6 });
+    this.setStance('stand');
+    this.weapon.setMode('back');
+    const stepIn = side === 'left' ? 90 : -90;
+    this.pos.x = clamp(this.pos.x + stepIn, 100, this.view.w - 100);
+    this.place();
+    if (opts.shy) {
+      this.panel.say({
+        kind: 'info',
+        speaker: '2b',
+        line: '... Detectada proximidad. Reanudando postura neutral.',
+        hold: 3000,
+      });
+    }
+    this.busy = false;
+  }
+
+  // SLOT: window_breach — Infiltration / hack dive through window with YoRHa portal glitch
+  async slotWindowBreach(opts = {}) {
+    if (this.stowed || this.busy) return;
+    this.busy = true;
+    this.mode = 'breach';
+
+    const wins = this.windows.wins.filter((w) => this.canSit(w));
+    let w1 = wins[0];
+    let w2 = wins[1] || wins[0];
+
+    if (!w1) {
+      w1 = { x: 140, y: 220, w: 420, h: 280, id: 998 };
+      w2 = { x: this.view.w - 560, y: 180, w: 440, h: 290, id: 999 };
+    } else if (!wins[1]) {
+      w2 = { x: clamp(w1.x > this.view.w * 0.5 ? 120 : this.view.w - 520, 80, this.view.w - 480), y: w1.y, w: w1.w, h: w1.h, id: 999 };
+    }
+
+    this.panel.say({
+      kind: 'work',
+      speaker: 'pod',
+      tag: 'INFILTRACIÓN',
+      line: pick(NIER_DIALOGUES.window_breach),
+      hold: 4000,
+    });
+
+    const entryPt = { x: clamp(w1.x + w1.w * 0.5, 90, this.view.w - 90), y: w1.y + 40 };
+    this.pos = { ...entryPt };
+    this.setStance('stand');
+    this.sound.play('pod-scan');
+    this.fx.windowBreach(w1);
+    await sleep(400);
+
+    this.sound.play('bunker-transport', { rate: 1.2, gain: 0.85 });
+    this.perform('dive');
+    this.p.glitchSeed = Math.random() * 100;
+    await tween(this.p, { collapse: 0.95, dissolve: 0.8, glitch: 0.9, alpha: 0 }, 360, ease.in);
+
+    await sleep(250);
+
+    const exitPt = this.seat(w2, clamp(w2.w * 0.5, 45, w2.w - 45));
+    this.pos = { ...exitPt };
+    this.facing = exitPt.x > this.view.w * 0.5 ? -1 : 1;
+    this.fx.windowBreach(w2);
+    this.sound.play('bunker-transport', { rate: 1.1, gain: 0.75 });
+    Object.assign(this.p, { collapse: 0.95, dissolve: 0.8, glitch: 0.9, alpha: 1 });
+    await tween(this.p, { collapse: 0, dissolve: 0, glitch: 0 }, 340, ease.out);
+
+    this.sound.play('cloth-rustle');
+    this.sound.play('footstep-metal');
+    this.setStance('sit', { perch: { id: w2.id, dx: w2.w * 0.5 } });
+    await this.perform('plop');
+
+    this.mode = 'idle';
+    this.busy = false;
+  }
+
+  // SLOT: wall_jump_glide — Acrobatic spin & slash off screen border, hooking onto Pod 042 to glide
+  async slotWallJumpGlide(opts = {}) {
+    if (this.stowed || this.busy) return;
+    this.busy = true;
+    this.mode = 'wall_jump';
+
+    const side = opts.side || (this.pos.x > this.view.w * 0.5 ? 'right' : 'left');
+    const wallX = side === 'left' ? 48 : this.view.w - 48;
+    const startY = this.pos.y;
+    this.facing = side === 'left' ? 1 : -1;
+
+    this.setStance('walk');
+    this.sound.play('footstep-metal', { gain: 0.7 });
+    await tween(this.pos, { x: wallX, y: Math.max(160, startY - 140) }, 320, ease.out);
+
+    this.facing = side === 'left' ? -1 : 1;
+    this.sound.play('katana-slash', { rate: 1.3, gain: 0.8 });
+    this.fx.burst(wallX, this.pos.y - 80, { count: 20, power: 1.3, spread: 70 });
+    this.fx.ring(wallX, this.pos.y - 80, { radius: 90, color: '#ffffff' });
+    this.perform('wall_spin');
+    await sleep(240);
+
+    this.sound.play('pod-glide');
+    this.pod.state = 'carry';
+    this.weapon.setMode('hidden');
+    this.setStance('glide');
+
+    const seat = this.pickSeat();
+    const target = seat ? this.seat(seat.win, seat.dx) : { x: clamp(this.view.w * 0.5 + rand(-150, 150), 140, this.view.w - 140), y: this.floor };
+    const midPoint = {
+      x: (this.pos.x + target.x) * 0.5,
+      y: Math.min(this.pos.y, target.y) - 80,
+    };
+
+    await tween(this.pos, midPoint, 360, ease.out);
+    await tween(this.pos, target, 420, ease.in);
+
+    this.pod.state = 'follow';
+    this.weapon.setMode('back');
+    if (seat) {
+      this.setStance('sit', { perch: { id: seat.win.id, dx: seat.dx } });
+      this.sound.play('cloth-rustle');
+      await this.perform('plop');
+    } else {
+      this.setStance('stand');
+      this.sound.play('footstep-metal');
+      this.fx.burst(target.x, target.y - 12, { count: 12, power: 0.6, spread: 45 });
+      await this.perform('land');
+    }
+
+    if (opts.announce !== false) {
+      this.panel.say({
+        kind: 'info',
+        speaker: 'pod',
+        line: pick(NIER_DIALOGUES.wall_jump_glide),
+        hold: 3600,
+      });
+    }
+
+    this.mode = 'idle';
+    this.busy = false;
+  }
+
+  // SLOT: sleep_standby — 2B sits down, lowers head, diagnostic hologram cone
+  async slotSleepStandby(opts = {}) {
+    if (this.stowed || this.busy) return;
+    this.busy = true;
+    this.mode = 'sleep';
+    this.nextDoze = performance.now() + rand(12000, 20000);
+
+    this.sound.play('cloth-rustle', { gain: 0.65 });
+    this.setStance('sleep');
+    this.weapon.setMode('back');
+    this.pod.state = 'follow';
+
+    this.fx.diagnosticHologram(() => this.pod.pos, () => this.pos);
+
+    if (opts.announce !== false) {
+      this.panel.say({
+        kind: 'info',
+        speaker: 'pod',
+        line: pick(NIER_DIALOGUES.sleep_standby),
+        hold: 4200,
+      });
+    }
+
+    this.busy = false;
+  }
+
+  wake(opts = {}) {
+    if (this.mode !== 'sleep') return;
+    this.mode = 'idle';
+    this.sound.play('ui-open', { gain: 0.7 });
+    this.setStance('stand');
+    this.perform('land');
+    if (opts.announce !== false) {
+      this.panel.say({
+        kind: 'info',
+        speaker: '2b',
+        line: pick(NIER_DIALOGUES.sleep_wake),
+        hold: 3600,
+      });
+    }
+  }
+
+  // SLOT: bunker_uplink — Bunker satellite flyover + Pod 042 telemetry data beam + 2B gaze
+  async slotBunkerUplink(opts = {}) {
+    if (this.stowed || this.busy) return;
+    this.busy = true;
+
+    this.sound.play('bunker-transport', { rate: 0.9, gain: 0.8 });
+    this.sound.play('pod-scan');
+
+    this.perform('gaze');
+    this.fx.satelliteUplink({
+      satelliteImg: this.satelliteImg,
+      podPosFn: () => this.pod.pos,
+    });
+
+    this.panel.say({
+      kind: 'info',
+      speaker: 'pod',
+      tag: 'BÚNKER YORHA',
+      line: pick(NIER_DIALOGUES.bunker_uplink),
+      hold: 5200,
+    });
+
+    await sleep(2800);
+    this.busy = false;
+  }
+
   // ---------- Gravity & Falling when a window closes/minimizes ----------
 
   landing() {
@@ -730,6 +1026,7 @@ export class ThemeEngine {
     this.stance = stance;
     this.perch = perch;
     this.p.sit = stance === 'sit' ? 1 : 0;
+    this.p.pose = stance === 'sit' ? 'sit' : (stance === 'peek' ? 'peek' : (stance === 'sleep' ? 'sleep' : 'stand'));
     this.base = new Player(stance, { dir });
     this.pivot();
   }
@@ -792,7 +1089,8 @@ export class ThemeEngine {
     p.smear = pose.smear;
     p.echo = pose.echo;
 
-    const bob = this.stance === 'sit' ? clamp(pose.bob, -2, 2) : pose.bob;
+    p.pose = pose.pose || (this.stance === 'sit' ? 'sit' : (this.stance === 'peek' ? 'peek' : (this.stance === 'sleep' ? 'sleep' : 'stand')));
+    const bob = (this.stance === 'sit' || this.stance === 'sleep' || this.stance === 'peek') ? clamp(pose.bob, -2, 2) : pose.bob;
     this.bob = this.dragging ? 0 : bob;
     this.tilt = this.dragging ? 0 : pose.tilt;
     this.sx = pose.sx;
@@ -806,18 +1104,51 @@ export class ThemeEngine {
     }
     if (this.busy || this.dragging || this.stowed) return;
 
+    if (this.mode === 'sleep') {
+      if (now > this.nextDoze) {
+        this.nextDoze = now + rand(14000, 24000);
+        this.perform('doze');
+      }
+      return;
+    }
+
+    if (this.mode === 'peek') {
+      if (now > this.peekUntil) {
+        this.unpeek();
+      }
+      return;
+    }
+
     if (now > this.nextQuirk) {
       const base = (this.idleQuirkIntervalSec || 45) * 1000;
       this.nextQuirk = now + rand(base * 0.75, base * 1.25);
-      this.slotIdleQuirk();
+      const idleTime = now - this.lastUserInteraction;
+      if (idleTime > 120000 && Math.random() < 0.35) {
+        this.slotSleepStandby();
+      } else if (Math.random() < 0.25) {
+        this.slotBunkerUplink();
+      } else {
+        this.slotIdleQuirk();
+      }
       return;
     }
 
     if (this.wander && now > this.nextWander) {
-      this.nextWander = now + rand(28000, 55000);
-      const seat = this.pickSeat();
-      if (seat && (this.stance !== 'sit' || this.perch?.id !== seat.win.id)) {
-        this.slotSitWindow({ seat, announce: false });
+      this.nextWander = now + rand(28000, 52000);
+      const roll = Math.random();
+      if (roll < 0.35) {
+        const seat = this.pickSeat();
+        if (seat && (this.stance !== 'sit' || this.perch?.id !== seat.win.id)) {
+          this.slotSitWindow({ seat, announce: false });
+        } else {
+          this.slotTraverse();
+        }
+      } else if (roll < 0.55) {
+        this.slotEdgePeek({ announce: false });
+      } else if (roll < 0.75) {
+        this.slotWallJumpGlide({ announce: false });
+      } else if (roll < 0.90 && this.windows.wins.length > 0) {
+        this.slotWindowBreach({ announce: false });
       } else {
         this.slotTraverse();
       }
@@ -847,11 +1178,26 @@ export class ThemeEngine {
       this.p.sit = 0;
       this.pod.state = 'carry';
       this.weapon.setMode('hidden');
+    } else if (stance === 'peek') {
+      this.mode = 'peek';
+      this.p.sit = 0;
+      this.weapon.setMode('hidden');
+      this.pod.state = 'follow';
+      this.perform('peek');
+    } else if (stance === 'sleep') {
+      this.mode = 'sleep';
+      this.p.sit = 0;
+      this.weapon.setMode('back');
+      this.pod.state = 'follow';
+      this.fx.diagnosticHologram(() => this.pod.pos, () => this.pos);
+      this.perform('sleep');
     } else if (stance === 'work') {
+      this.mode = 'idle';
       this.p.sit = 0;
       this.pod.state = 'follow';
       this.weapon.setMode('back');
     } else {
+      this.mode = 'idle';
       this.p.sit = 0;
       this.pod.state = 'follow';
       this.weapon.setMode('back');
@@ -883,6 +1229,19 @@ export class ThemeEngine {
       }
 
       if (this.busy || !this.hitCharacter(e.clientX, e.clientY)) return;
+      this.lastUserInteraction = performance.now();
+      if (this.mode === 'sleep') {
+        this.wake();
+        return;
+      }
+      if (this.stance === 'peek') {
+        if (this.peekSide === 'top') {
+          this.unpeek();
+          return;
+        }
+        this.unpeek({ shy: true });
+        return;
+      }
       down = { x: e.clientX, y: e.clientY, pos: { ...this.pos } };
       lastDragPos = { x: e.clientX, y: e.clientY };
       shakeDistance = 0;
@@ -890,6 +1249,13 @@ export class ThemeEngine {
 
     window.addEventListener('mousemove', (e) => {
       this.mouse = { x: e.clientX, y: e.clientY };
+      if (this.mode === 'sleep') {
+        const d = Math.hypot(e.clientX - this.pos.x, e.clientY - this.pos.y);
+        if (d < 140) {
+          this.lastUserInteraction = performance.now();
+          this.wake({ announce: false });
+        }
+      }
 
       // Check circular rubbing / petting on Pod 042 (companion_pet)
       if (!down && this.hitPod(e.clientX, e.clientY)) {
