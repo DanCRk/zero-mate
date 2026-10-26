@@ -57,6 +57,7 @@ function loadThemePackage(themeId = 'nier-2b') {
       spriteUrl: assetUrl(manifest.character.sprite),
       sitSpriteUrl: manifest.character.sitSprite ? assetUrl(manifest.character.sitSprite) : null,
       peekSpriteUrl: manifest.character.peekSprite ? assetUrl(manifest.character.peekSprite) : null,
+      ceilingSpriteUrl: manifest.character.ceilingSprite ? assetUrl(manifest.character.ceilingSprite) : null,
       sleepSpriteUrl: manifest.character.sleepSprite ? assetUrl(manifest.character.sleepSprite) : null,
       spinSpriteUrl: manifest.character.spinSprite ? assetUrl(manifest.character.spinSprite) : null,
       wallAnchorSpriteUrl: manifest.character.wallAnchorSprite ? assetUrl(manifest.character.wallAnchorSprite) : null,
