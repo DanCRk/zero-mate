@@ -9,6 +9,7 @@ const DEFAULTS = {
   scale: 0.62,          // 0.62 ≈ ~270px tall on desktop
   muted: false,
   volume: 0.75,
+  hookAudio: false,     // false = mute passive terminal/IDE hook SFX (pod-scan, pod-ack, ui-click, victory sheathe)
   lang: 'en',           // 'en' | 'es' | 'auto' (English default)
   displayId: null,      // null = primary display
   wander: true,         // autonomous window walking & Pod glide

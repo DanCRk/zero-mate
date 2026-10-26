@@ -27,6 +27,7 @@ export class SettingsModal {
     this.volumeSlider = el.querySelector('#setting-volume');
     this.volumeVal = el.querySelector('#setting-volume-val');
     this.muteChk = el.querySelector('#setting-mute');
+    this.hookAudioChk = el.querySelector('#setting-hook-audio');
 
     // Behavior inputs
     this.wanderChk = el.querySelector('#setting-wander');
@@ -173,6 +174,13 @@ export class SettingsModal {
       this.sound.configure({ muted });
       if (!muted) this.sound.play('ui-confirm');
       this.host.setConfig({ muted });
+    });
+
+    // General: Hook Audio Mute
+    this.hookAudioChk?.addEventListener('change', () => {
+      const hookAudio = !this.hookAudioChk.checked;
+      this.sound.play(hookAudio ? 'ui-confirm' : 'ui-cancel');
+      this.host.setConfig({ hookAudio });
     });
 
     // Behavior: Wander
@@ -328,6 +336,10 @@ export class SettingsModal {
 
     if (typeof cfg.muted === 'boolean' && this.muteChk) {
       this.muteChk.checked = cfg.muted;
+    }
+
+    if (typeof cfg.hookAudio === 'boolean' && this.hookAudioChk) {
+      this.hookAudioChk.checked = !cfg.hookAudio;
     }
 
     if (typeof cfg.wander === 'boolean' && this.wanderChk) {

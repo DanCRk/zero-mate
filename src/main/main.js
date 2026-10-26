@@ -229,7 +229,8 @@ function rebuildTray() {
     {
       label: isEs ? `Audio (${themeName})` : `Audio (${themeName})`,
       submenu: [
-        { label: isEs ? 'Silenciar' : 'Mute', type: 'checkbox', checked: cfg.muted, click: (item) => updateConfig({ muted: item.checked }) },
+        { label: isEs ? 'Silenciar Todo' : 'Mute All', type: 'checkbox', checked: cfg.muted, click: (item) => updateConfig({ muted: item.checked }) },
+        { label: isEs ? 'Silenciar audio de hooks (Terminal / IDE)' : 'Mute passive hook SFX (Terminal / IDE)', type: 'checkbox', checked: !cfg.hookAudio, click: (item) => updateConfig({ hookAudio: !item.checked }) },
         { type: 'separator' },
         {
           label: isEs ? 'Abrir carpeta de sonidos del tema' : 'Open theme sounds directory',
