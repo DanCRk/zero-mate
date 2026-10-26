@@ -161,24 +161,38 @@ public static class SpriteProcessor {
   }
 
   public static void WriteIco(Bitmap bmp, string outPath) {
-    using (Bitmap iconBmp = ResizeExact(bmp, 64, 64))
-    using (MemoryStream msPng = new MemoryStream()) {
-      iconBmp.Save(msPng, ImageFormat.Png);
-      byte[] pngBytes = msPng.ToArray();
-      using (FileStream fs = new FileStream(outPath, FileMode.Create))
-      using (BinaryWriter bw = new BinaryWriter(fs)) {
-        bw.Write((short)0);   // reserved
-        bw.Write((short)1);   // type: 1 = ICO
-        bw.Write((short)1);   // count: 1 image
-        bw.Write((byte)64);   // width
-        bw.Write((byte)64);   // height
+    int[] sizes = new int[] { 256, 128, 64, 48, 32, 16 };
+    System.Collections.Generic.List<byte[]> pngs = new System.Collections.Generic.List<byte[]>();
+    foreach (int sz in sizes) {
+      using (Bitmap iconBmp = ResizeExact(bmp, sz, sz))
+      using (MemoryStream msPng = new MemoryStream()) {
+        iconBmp.Save(msPng, ImageFormat.Png);
+        pngs.Add(msPng.ToArray());
+      }
+    }
+
+    using (FileStream fs = new FileStream(outPath, FileMode.Create))
+    using (BinaryWriter bw = new BinaryWriter(fs)) {
+      bw.Write((short)0);   // reserved
+      bw.Write((short)1);   // type: 1 = ICO
+      bw.Write((short)sizes.Length); // count
+
+      int offset = 6 + sizes.Length * 16;
+      for (int i = 0; i < sizes.Length; i++) {
+        int sz = sizes[i];
+        bw.Write((byte)(sz == 256 ? 0 : sz)); // width (0 = 256)
+        bw.Write((byte)(sz == 256 ? 0 : sz)); // height (0 = 256)
         bw.Write((byte)0);    // colors
         bw.Write((byte)0);    // reserved
         bw.Write((short)1);   // planes
         bw.Write((short)32);  // bpp
-        bw.Write((int)pngBytes.Length);
-        bw.Write((int)22);    // offset
-        bw.Write(pngBytes);
+        bw.Write((int)pngs[i].Length);
+        bw.Write((int)offset);
+        offset += pngs[i].Length;
+      }
+
+      for (int i = 0; i < sizes.Length; i++) {
+        bw.Write(pngs[i]);
       }
     }
   }
@@ -218,7 +232,7 @@ Process-Direct (Join-Path $RawDir "portrait-2b.png")  (Join-Path $OutDir "portra
 Process-Cutout (Join-Path $RawDir "portrait-pod.png") (Join-Path $OutDir "portrait-pod.png") 160 160 12 12 $true
 Process-Direct (Join-Path $RawDir "portrait-2b.png")  (Join-Path $OutDir "tray.png")         32 32
 
-$p2b = [System.Drawing.Bitmap]::new((Join-Path $OutDir "portrait-2b.png"))
+$p2b = [System.Drawing.Bitmap]::new((Join-Path $RawDir "portrait-2b.png"))
 [SpriteProcessor]::WriteIco($p2b, (Join-Path $OutDir "yorha.ico"))
 $p2b.Dispose()
 Write-Host "  [OK] yorha.ico generated"

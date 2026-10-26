@@ -114,9 +114,36 @@ async function boot() {
   const keyOpenaiEl = document.getElementById('brain-key-openai');
   const keyClaudeEl = document.getElementById('brain-key-claude');
 
+  
+  const updateModelPlaceholder = (prov) => {
+    switch (prov) {
+      case 'agy':
+        brainModelEl.placeholder = 'gemini-3.8-flash-low (Ligero), gemini-3.8-flash-medium...';
+        break;
+      case 'gemini':
+        brainModelEl.placeholder = 'gemini-2.5-flash (Recomendado), gemini-1.5-flash...';
+        break;
+      case 'openai':
+        brainModelEl.placeholder = 'gpt-4o-mini, gpt-4o...';
+        break;
+      case 'claude-api':
+      case 'claude-cli':
+        brainModelEl.placeholder = 'claude-3-5-haiku-20241022, claude-3-5-sonnet...';
+        break;
+      case 'ollama':
+        brainModelEl.placeholder = 'llama3.2, mistral, qwen2.5...';
+        break;
+      default:
+        brainModelEl.placeholder = 'Por defecto del proveedor...';
+    }
+  };
+
+  brainProviderEl?.addEventListener('change', () => updateModelPlaceholder(brainProviderEl.value));
+
   const openBrainModal = async () => {
     const cfg = await host.getConfig();
     brainProviderEl.value = cfg.brainProvider || 'agy';
+    updateModelPlaceholder(brainProviderEl.value);
     brainModelEl.value = cfg.brainModel || '';
     brainOllamaEl.value = cfg.ollamaUrl || 'http://127.0.0.1:11434';
     keyGeminiEl.value = cfg.brainKeys?.gemini || '';
