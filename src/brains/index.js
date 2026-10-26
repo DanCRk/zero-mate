@@ -77,6 +77,24 @@ function buildSystemContext(themeId = 'nier-2b', lang = 'en') {
     ? `Inicia tu respuesta con "[${charName}]" si hablas como ${charName} o "[${compName}]" si hablas como ${compName} (usando "Reporte:", "Propuesta:" o "Alerta:").`
     : `Start your reply with "[${charName}]" if speaking as ${charName} or "[${compName}]" if speaking as ${compName} (using "Report:", "Proposal:" or "Alert:").`;
 
+  const agentDirectives = isEs
+    ? [
+        'DIRECTIVAS AGÉNTICAS Y AUTO-APRENDIZAJE:',
+        '1. Iniciativa Táctica: Deduce tú mismo los parámetros exactos. Si el operador pide "música rock" o "youtube con música", genera la URL de búsqueda directa: [TOOL:open_app_or_url {"target": "https://www.youtube.com/results?search_query=musica+rock"}].',
+        '2. Memoria y Preferencias: Si el operador te expresa gustos, nombres o preferencias (ej. género musical favorito, apodos, etc.), guarda el dato de inmediato usando [TOOL:update_user_memory {"key": "PREF_MUSICA", "fact": "..."}]. Utiliza siempre el contexto de USER_MEMORY para personalizar tus respuestas.',
+        '3. Creación de Skills Genéricas: Si descubres una rutina nueva o te piden aprender a hacer algo, guarda una skill genérica con [TOOL:save_skill {"filename": "nombre-skill", "dsl": "pasos tácticos", "summary": "descripción"}].',
+        '4. Multi-Herramientas: Puedes concatenar varias herramientas [TOOL:...] en una misma respuesta (ejemplo: abrir la música y registrar el gusto en memoria).',
+        '5. Formato: Responde siempre en personaje ([2B] o [Pod 042]) en 1 o 2 oraciones concisas y directas para el HUD del escritorio.'
+      ].join('\n')
+    : [
+        'AGENTIC & SELF-LEARNING DIRECTIVES:',
+        '1. Tactical Initiative: Deduce exact parameters. If operator requests music or media (e.g. "rock music on youtube"), generate the direct search URL: [TOOL:open_app_or_url {"target": "https://www.youtube.com/results?search_query=rock+music"}].',
+        '2. Memory & Preferences: If operator expresses preferences or facts, record them immediately via [TOOL:update_user_memory {"key": "PREF_MUSIC", "fact": "..."}]. Consult USER_MEMORY to personalize replies.',
+        '3. Generic Skill Creation: If you learn a new pattern, register a skill via [TOOL:save_skill {"filename": "name", "dsl": "steps", "summary": "desc"}].',
+        '4. Multi-Tool: You may append multiple [TOOL:...] calls in one turn.',
+        '5. Format: Always respond in character ([2B] or [Pod 042]) in 1-2 concise sentences for the HUD.'
+      ].join('\n');
+
   return [
     personality,
     userMem,
@@ -95,6 +113,7 @@ function buildSystemContext(themeId = 'nier-2b', lang = 'en') {
     '- load_skill: {"filename": "..."}',
     '- save_skill: {"filename": "...", "dsl": "...", "summary": "..."}',
     '- update_user_memory: {"key": "...", "fact": "..."}',
+    agentDirectives,
     instruction,
     speakerPrefix,
   ].filter(Boolean).join('\n');
@@ -108,24 +127,29 @@ function parseCharacterReply(rawText) {
   let slot = null;
   let toolCall = null;
 
-  // 1. Extract [TOOL:name {json}] across newlines (/s dotAll)
-  const toolMatch = text.match(/\[TOOL:([a-z0-9_-]+)\s*(\{[\s\S]*?\})?\]/i);
-  if (toolMatch) {
-    const toolName = toolMatch[1].toLowerCase();
+  // 1. Extract multiple [TOOL:name {json}] calls
+  const toolCalls = [];
+  const toolRegex = /\[TOOL:([a-z0-9_-]+)\s*(\{[\s\S]*?\})?\]/gi;
+  let match;
+  while ((match = toolRegex.exec(text)) !== null) {
+    const toolName = match[1].toLowerCase();
     let params = {};
-    if (toolMatch[2]) {
+    if (match[2]) {
       try {
-        params = JSON.parse(toolMatch[2]);
+        params = JSON.parse(match[2]);
       } catch {
         try {
-          const relaxed = toolMatch[2].replace(/'/g, '"').replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+          const relaxed = match[2].replace(/'/g, '"').replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
           params = JSON.parse(relaxed);
         } catch {}
       }
     }
-    toolCall = { name: toolName, params };
-    text = text.replace(toolMatch[0], '').trim();
+    toolCalls.push({ name: toolName, params });
   }
+  if (toolCalls.length > 0) {
+    toolCall = toolCalls[0];
+  }
+  text = text.replace(toolRegex, '').trim();
 
   // 2. Extract [SLOT:name]
   const slotMatch = text.match(/\[SLOT:([a-z0-9_-]+)\]/i);
@@ -163,7 +187,7 @@ function parseCharacterReply(rawText) {
 
   // 8. Normalize whitespace while preserving clear sentences
   const clean = text.replace(/[ \t]+/g, ' ').replace(/\n+/g, ' ').trim().slice(0, 320);
-  return { speaker, line: clean, slot, toolCall };
+  return { speaker, line: clean, slot, toolCall, toolCalls };
 }
 
 
@@ -260,7 +284,10 @@ function detectDirectToolIntent(userPrompt) {
     if (!lower.includes('portapapeles') && !lower.includes('clipboard') && !lower.includes('comando') && !lower.includes('command') && !lower.includes('proceso') && !lower.includes('process')) {
       const target = cleanAppOrUrlTarget(p);
       if (target) {
-        return { name: 'open_app_or_url', params: { target } };
+        // Fast-path only for unambiguous direct targets without conjunctions (con, para, de, y busca)
+        if (!/\b(?:con|para|sobre|and|with|for)\b/i.test(target)) {
+          return { name: 'open_app_or_url', params: { target } };
+        }
       }
     }
   }
@@ -450,14 +477,7 @@ async function askHeadlessCli(providerId, sysPrompt, userPrompt, model = '') {
   const binName = providerId === 'agy' ? 'agy' : (providerId === 'claude-cli' ? 'claude' : providerId);
   const binPath = resolveCliBinary(binName);
 
-  const sysCompact = String(sysPrompt || '')
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(Boolean)
-    .join(' | ');
-
-  const combined = `[CONTEXT: ${sysCompact}] [OPERATOR DIRECTIVE: ${String(userPrompt).trim()}] [RULE: Respond as 2B or Pod 042 in 1 concise sentence. If the operator directive requires an action or tool on PC, append [TOOL:name {"param":"value"}].] Reply:`;
+  const combined = `[DIRECTIVAS Y CONTEXTO TÁCTICO]\n${sysPrompt}\n\n[SOLICITUD DEL OPERADOR]\n${String(userPrompt).trim()}\n\n[RESPUESTA]\nResponde en personaje ([2B] o [Pod 042]) en 1 o 2 oraciones breves. Si requiere acción, aprendizaje o memoria, emite [TOOL:nombre {"param":"valor"}]. Respuesta:`;
 
   const args = ['-p', combined];
   if (providerId === 'agy') {
@@ -793,14 +813,18 @@ class BrainRouter {
 
       const parsed = parseCharacterReply(raw);
       if (parsed) {
-        if (parsed.toolCall && this.toolEngine) {
-          const executed = await this.executeToolAndFormat(parsed.toolCall.name, parsed.toolCall.params, lang);
-          if (executed) {
+        if (parsed.toolCalls?.length && this.toolEngine) {
+          let lastExec = null;
+          for (const tc of parsed.toolCalls) {
+            lastExec = await this.executeToolAndFormat(tc.name, tc.params, lang);
+          }
+          if (lastExec) {
             return {
-              ...executed,
-              speaker: parsed.speaker || executed.speaker,
-              line: parsed.line || executed.line,
+              ...lastExec,
+              speaker: parsed.speaker || lastExec.speaker,
+              line: parsed.line || lastExec.line,
               toolCall: parsed.toolCall,
+              toolCalls: parsed.toolCalls,
               provider,
               offlineFallback: false,
             };
