@@ -38,6 +38,7 @@ export const NIER_DIALOGUES = {
   idle_katana: [
     'Contrato Virtuoso en óptimas condiciones. El filo no presenta desgaste.',
     'Un androide de combate siempre debe mantener su equipamiento listo.',
+    'Alineación molecular de la hoja completada. Sin deformaciones en el filo.',
   ],
   idle_visor: [
     'Sensores ópticos calibrados. Continúa con tu trabajo.',
@@ -64,8 +65,11 @@ export const NIER_DIALOGUES = {
     'Alerta: Se requiere modificación en el sistema local. Propuesta: ¿Autorizar la ejecución de esta operación?',
   ],
   victory: [
-    'Objetivo completado. Regresando a estado de vigilancia.',
-    'Misión cumplida sin contratiempos.',
+    'Objetivo completado. Misión cumplida sin contratiempos.',
+    'Todas las directivas tácticas han sido ejecutadas exitosamente.',
+    'Reporte: Operación finalizada. Desempeño del operador catalogado como sobresaliente.',
+    'Sector asegurado. Buen trabajo, Operador.',
+    'Reporte [Pod 042]: Misión completada con éxito. Unidad 2B reanudando vigilancia perimetral.',
   ],
   stow_out: [
     'Reporte: Unidad 2B transferida al Búnker. Pod 042 permanecerá en modo centinela.',
@@ -457,17 +461,35 @@ export class ThemeEngine {
     const choice = opts.kind || pick(['katana', 'pet_pod', 'visor']);
 
     if (choice === 'katana') {
-      this.sound.play('weapon-hum');
+      this.sound.play('weapon-hum', { gain: 0.75 });
       this.weapon.setMode('inspect');
-      this.fx.ring(this.pos.x, this.pos.y - 220 * this.scale, { radius: 65, color: '#d8b868' });
+      this.fx.ring(this.pos.x + 35 * this.facing, this.pos.y - 190 * this.scale, { radius: 55, color: '#d8b868' });
+
+      // Start inspection animation
+      const actPromise = this.perform('inspect_katana', this.facing);
+
+      // Mid-inspection: glint gleam along the blade edge + Pod diagnostic ping
+      await sleep(360);
+      this.sound.play('ui-open', { rate: 1.85, gain: 0.4 });
+      this.fx.ring(this.pos.x + 45 * this.facing, this.pos.y - 195 * this.scale, { radius: 35, color: '#ffffff' });
+      this.sound.play('pod-scan', { rate: 1.6, gain: 0.45 });
+
       this.panel.say({
         kind: 'info',
         speaker: '2b',
         line: pick(NIER_DIALOGUES.idle_katana),
-        hold: 3800,
+        hold: 4200,
       });
-      await this.perform('inspect_katana', this.facing);
+
+      // Wrist flick and 360-degree twirl back to holster halo
+      await sleep(400);
+      this.weapon.setMode('sheathe');
+      await sleep(360);
+      this.sound.play('katana-sheathe', { gain: 0.9 });
+      this.fx.ring(this.pos.x, this.pos.y - 180 * this.scale, { radius: 75, color: '#ffffff' });
       this.weapon.setMode('back');
+
+      await actPromise;
     } else if (choice === 'pet_pod') {
       await this.slotCompanionInteract({ initiator: '2b' });
     } else {
@@ -632,29 +654,59 @@ export class ThemeEngine {
     };
   }
 
-  // SLOT 8: victory — Classic 2B katana spin, flick, and mid-air sheathe behind her back
+  // SLOT 8: victory — Acrobatic somersault leap, crescent energy slash, mid-air blade twirl sheathe, and Pod 042 celebratory fireworks
   async slotVictory(opts = {}) {
     if (this.stowed || this.busy) return;
     this.busy = true;
-    if (!opts.silent) this.sound.play('katana-slash', { rate: 1.15, gain: 0.7 });
-    this.weapon.setMode('sheathe');
-    const h = this.head();
-    this.fx.ring(h.x, h.y + 40, { radius: 110, color: '#ffffff' });
-    this.fx.burst(h.x, h.y + 40, { count: 24, power: 1.1, spread: 80 });
 
-    await this.perform('victory_sheathe', this.facing);
+    const h = this.head();
+    const facing = this.facing;
+
+    // Phase 1: Acrobatic leap & crescent energy slash with katana
     if (!opts.silent) {
-      this.sound.play('katana-sheathe');
-      this.sound.play('ui-confirm');
+      this.sound.play('katana-slash', { rate: 1.05, gain: 0.95 });
+    }
+    this.weapon.setMode('slash');
+    this.fx.slashArc(h.x - 90 * facing, h.y - 30, h.x + 95 * facing, h.y + 70, { life: 450 });
+    this.fx.burst(h.x + 20 * facing, h.y + 20, { count: 32, power: 1.4, spread: 90 });
+    this.fx.ring(h.x, h.y + 25, { radius: 115, color: '#d8b868' });
+
+    // Execute acrobatic victory somersault & landing
+    const actPromise = this.perform('victory_sheathe', facing);
+
+    // Phase 2: Mid-action blade twirl and sheathe
+    await sleep(260);
+    this.weapon.setMode('sheathe');
+
+    // Moment of sheathe lock
+    await sleep(290);
+    if (!opts.silent) {
+      this.sound.play('katana-sheathe', { gain: 0.95 });
+      this.sound.play('ui-confirm', { rate: 1.08, gain: 0.85 });
     }
     this.weapon.setMode('back');
-    this.fx.ring(h.x, h.y + 30, { radius: 85, color: '#d8b868' });
+    this.fx.ring(h.x, h.y + 20, { radius: 85, color: '#ffffff' });
+    this.fx.ring(h.x, h.y + 20, { radius: 130, color: '#d8b868' });
 
+    // Phase 3: Pod 042 celebratory aerial pirouette & fireworks
+    if (this.pod) {
+      this.pod.triggerCelebration(3400);
+      if (!opts.silent) {
+        this.sound.play('pod-happy-chirp', { rate: 1.0, gain: 0.95 });
+      }
+      this.fx.burst(this.pod.pos.x, this.pod.pos.y - 30, { count: 26, power: 1.55, spread: 70 });
+      this.fx.ring(this.pod.pos.x, this.pod.pos.y - 12, { radius: 65, color: '#d8b868' });
+    }
+
+    await actPromise;
+
+    // Phase 4: YoRHa Mission Complete Dialogue
+    const speaker = Math.random() < 0.35 ? 'pod' : '2b';
     this.panel.say({
       kind: 'done',
-      speaker: '2b',
+      speaker,
       line: opts.line || pick(NIER_DIALOGUES.victory),
-      hold: 4200,
+      hold: 4600,
     });
     this.busy = false;
   }

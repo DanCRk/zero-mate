@@ -198,13 +198,14 @@ export const ACTS = {
   inspect_katana: {
     priority: 2,
     directional: true,
+    fps: 24,
     keys: [
-      [2, { head: -0.06, armR: 0.45 }, 'weapon_summon'],
-      [6, { head: 0.12, armR: 1.15, longR: 1.1, skirt: 2.0 }],
-      [8, { head: 0.16, armR: 1.25, longR: 1.12, hair: 2.2 }, 'weapon_shine'],
-      [6, { head: 0.08, armR: 0.85 }],
-      [3, { head: 0, armR: 0.2 }, 'weapon_return'],
-      [1, {}],
+      [3, { head: -0.06, armR: 0.55, armL: -0.12, bob: -1 }, 'weapon_summon'],
+      [6, { head: 0.12, armR: 1.15, armL: 0.65, longL: 1.05, skirt: 1.8, bob: 0 }],
+      [10, { head: 0.16, armR: 1.22, armL: 0.88, longL: 1.08, hair: 1.5, skirt: 1.2, bob: -1 }, 'weapon_shine'],
+      [6, { head: 0.08, armR: 0.95, armL: 0.45, longL: 1.02, bob: 0 }],
+      [4, { head: -0.04, armR: 0.35, armL: 0.05, bob: 1, tilt: -3 }, 'weapon_return'],
+      [2, { arms: 0, tilt: 0 }],
     ],
   },
 
@@ -251,20 +252,27 @@ export const ACTS = {
     ],
   },
 
-  // Slot: victory — Classic 2B spin, blood/dust flick, and mid-air katana sheathe behind her back
+  // Slot: victory — Acrobatic aerial somersault, crescent slash, and mid-air blade twirl sheathe
   victory_sheathe: {
     priority: 4,
     fps: 24,
     directional: true,
     keys: [
-      [2, { sy: 0.88, sx: 1.06, bob: 5, arms: -0.3 }],
-      [2, { sx: 0.5, sy: 1.06, bob: -10, arms: 0.6, echo: [10, 0], skirt: 6.0 }, 'victory_spin'],
-      [2, { sx: -0.5, sy: 1.08, bob: -16, arms: 1.1, echo: [14, 0], skirt: -6.0 }],
-      [2, { sx: 1.0, sy: 1.04, bob: -12, armR: 1.55, armL: -0.3, echo: [8, 0] }, 'victory_flick'],
-      [6, { bob: -6, armR: 1.4, armL: -0.25, head: 0.08 }],
-      [2, { bob: 0, armR: 0.65, head: -0.05, sy: 0.94, sx: 1.04 }, 'victory_lock'],
-      [6, { bob: 0, armR: 0.15, head: 0.06 }, 'speak'],
-      [2, { arms: 0 }],
+      // 1. Preparation crouch before leap
+      [2, { sy: 0.86, sx: 1.08, bob: 8, arms: -0.3, skirt: -2.0 }],
+      // 2. Acrobatic aerial somersault with 2b-acrobat-spin texture
+      [3, { pose: 'spin', sy: 1.06, sx: 1.0, bob: -24, tilt: 80, smear: [12, -18], echo: [10, 6] }, 'victory_spin'],
+      [3, { pose: 'spin', sy: 1.06, sx: 1.0, bob: -32, tilt: 220, smear: [18, -14], echo: [16, 8] }],
+      [2, { pose: 'spin', sy: 1.02, sx: 1.0, bob: -16, tilt: 340, smear: [8, -8] }],
+      // 3. Crisp landing in low combat stance with energy slash
+      [4, { pose: 'stand', sy: 0.90, sx: 1.08, bob: 10, armR: 1.7, armL: -0.4, tilt: 0, skirt: 4.5, smear: [14, 0] }, 'victory_flick'],
+      // 4. Elegant blade flick & twirl
+      [5, { bob: 4, armR: 1.45, armL: -0.2, head: 0.06, skirt: 2.0 }],
+      // 5. Back holster lock with hand resting on hilt
+      [4, { bob: -1, armR: 0.72, armL: 0.1, head: -0.06, sy: 0.96, sx: 1.03 }, 'victory_lock'],
+      // 6. Composed standing pose, hand on hip, looking at operator
+      [8, { bob: 0, armR: 0.22, armL: 0.18, head: 0.05, skirt: 0.5 }, 'speak'],
+      [3, { arms: 0 }],
     ],
   },
 
