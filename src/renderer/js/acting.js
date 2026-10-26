@@ -57,13 +57,18 @@ export const ACTS = {
     ],
   },
 
-  // Pod Glide (Slot: traverse) — 2B holds onto Pod 042 with raised arms while gliding across the screen
+  // Pod Glide (Slot: traverse & Wall Jump Phase 3) — 2B holds onto Pod 042's handles with raised arms,
+  // floating and swaying naturally in the wind stream with realistic leg and dress physics, zero stiff board tilt.
   glide: {
     loop: true,
     fps: 24,
     keys: [
-      [3, { armL: 1.95, armR: 1.85, longL: 1.12, longR: 1.12, hair: -5.5, skirt: -6.5, kickL: -0.18, kickR: -0.12, tilt: 6 }],
-      [3, { armL: 1.98, armR: 1.88, longL: 1.12, longR: 1.12, hair: -7.0, skirt: -8.0, kickL: -0.22, kickR: -0.16, tilt: 7 }],
+      [3, { armL: 1.92, armR: 1.84, longL: 1.10, longR: 1.10, head: 0.05, hair: -5.2, skirt: -6.8, kickL: -0.16, kickR: -0.12, bob: -2, sy: 1.02, sx: 0.99 }],
+      [3, { armL: 1.95, armR: 1.86, longL: 1.12, longR: 1.12, head: 0.07, hair: -7.8, skirt: -9.5, kickL: -0.22, kickR: -0.16, bob: -4, sy: 1.03, sx: 0.985 }],
+      [3, { armL: 1.97, armR: 1.88, longL: 1.13, longR: 1.13, head: 0.08, hair: -9.4, skirt: -11.2, kickL: -0.28, kickR: -0.21, bob: -5, sy: 1.03, sx: 0.985 }],
+      [3, { armL: 1.95, armR: 1.87, longL: 1.12, longR: 1.12, head: 0.07, hair: -8.0, skirt: -9.8, kickL: -0.24, kickR: -0.24, bob: -4, sy: 1.02, sx: 0.99 }],
+      [3, { armL: 1.93, armR: 1.85, longL: 1.11, longR: 1.11, head: 0.05, hair: -6.4, skirt: -7.6, kickL: -0.18, kickR: -0.18, bob: -2, sy: 1.015, sx: 0.995 }],
+      [3, { armL: 1.91, armR: 1.83, longL: 1.09, longR: 1.09, head: 0.04, hair: -5.0, skirt: -6.2, kickL: -0.14, kickR: -0.13, bob: -1, sy: 1.01, sx: 0.995 }],
     ],
   },
 
@@ -128,16 +133,16 @@ export const ACTS = {
     ],
   },
 
-  // Acrobatic wall-jump somersault off screen borders (Slot: wall_jump_glide)
+  // Acrobatic wall-jump spin off screen borders (Slot: wall_jump_glide)
   wall_spin: {
     priority: 3,
     fps: 24,
     keys: [
-      [2, { pose: 'spin', bob: 2, tilt: 0, sx: 1.04, sy: 0.96, smear: [-8, -4] }],
-      [3, { pose: 'spin', bob: -12, tilt: 0, sx: 0.98, sy: 1.04, smear: [14, -16], echo: [8, 4] }],
-      [4, { pose: 'spin', bob: -24, tilt: 0, sx: 1.02, sy: 0.98, smear: [18, -10], echo: [14, 6] }],
-      [3, { pose: 'spin', bob: -14, tilt: 0, sx: 0.98, sy: 1.02, smear: [10, -6] }],
-      [2, { pose: 'spin', bob: -4, tilt: 0, sx: 1.0, sy: 1.0 }],
+      [2, { bob: 2, tilt: -15, kickL: -0.4, kickR: 0.3, armL: -0.8, armR: 0.8, smear: [-8, -6] }],
+      [2, { bob: -12, tilt: 60, kickL: 0.5, kickR: -0.4, armL: 1.2, armR: -1.2, smear: [12, -15], echo: [8, 4] }],
+      [3, { bob: -20, tilt: 180, kickL: -0.2, kickR: 0.2, armL: 1.8, armR: 1.8, smear: [18, -12], echo: [14, 6] }],
+      [2, { bob: -12, tilt: 290, kickL: 0.3, kickR: -0.2, armL: 1.9, armR: 1.8, smear: [10, -6] }],
+      [2, { bob: -4, tilt: 0, kickL: 0, kickR: 0, armL: 1.95, armR: 1.85 }],
     ],
   },
 

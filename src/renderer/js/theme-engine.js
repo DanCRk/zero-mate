@@ -879,7 +879,7 @@ export class ThemeEngine {
 
     // FASE 3: Enganche dinámico con Pod 042 y planeo suave a destino
     this.endAct(true);
-    this.pod.pos = { x: this.pos.x, y: this.pos.y - 45 };
+    this.pod.pos = { x: this.pos.x, y: this.pos.y - 455 * s };
     this.sound.play('pod-glide');
     this.sound.play('cloth-rustle', { gain: 0.7 });
     this.pod.state = 'carry';
