@@ -291,7 +291,7 @@ export const SPRITE = {
 };
 
 export class SpriteRenderer {
-  constructor(canvas, image, sitImage = null, peekImage = null, sleepImage = null) {
+  constructor(canvas, image, sitImage = null, peekImage = null, sleepImage = null, spinImage = null) {
     this.canvas = canvas;
     this.image = image;
     this.sitImage = sitImage;
@@ -345,6 +345,11 @@ export class SpriteRenderer {
       this.sleepTex = gl.createTexture();
       this.setTexture(sleepImage, this.sleepTex);
     }
+    this.spinTex = null;
+    if (spinImage) {
+      this.spinTex = gl.createTexture();
+      this.setTexture(spinImage, this.spinTex);
+    }
 
     gl.uniform1i(this.u.uTex, 0);
     gl.uniform2f(this.u.uSize, SPRITE.width, SPRITE.height);
@@ -385,7 +390,9 @@ export class SpriteRenderer {
     const { gl, u } = this;
     let targetTex = this.tex;
     let isSit = false;
-    if (s.pose === 'peek' && this.peekTex) {
+    if ((s.pose === 'spin' || s.pose === 'wall_spin') && this.spinTex) {
+      targetTex = this.spinTex;
+    } else if (s.pose === 'peek' && this.peekTex) {
       targetTex = this.peekTex;
     } else if (s.pose === 'sleep' && this.sleepTex) {
       targetTex = this.sleepTex;

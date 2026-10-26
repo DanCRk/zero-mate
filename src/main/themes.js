@@ -58,6 +58,8 @@ function loadThemePackage(themeId = 'nier-2b') {
       sitSpriteUrl: manifest.character.sitSprite ? assetUrl(manifest.character.sitSprite) : null,
       peekSpriteUrl: manifest.character.peekSprite ? assetUrl(manifest.character.peekSprite) : null,
       sleepSpriteUrl: manifest.character.sleepSprite ? assetUrl(manifest.character.sleepSprite) : null,
+      spinSpriteUrl: manifest.character.spinSprite ? assetUrl(manifest.character.spinSprite) : null,
+      wallAnchorSpriteUrl: manifest.character.wallAnchorSprite ? assetUrl(manifest.character.wallAnchorSprite) : null,
       weaponUrl: manifest.character.weapon ? assetUrl(manifest.character.weapon) : null,
       portraitUrl: assetUrl(manifest.character.portrait),
       cutinUrls: Object.fromEntries(

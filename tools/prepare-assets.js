@@ -213,7 +213,7 @@ Process-Cutout (Join-Path $RawDir "katana.png")  (Join-Path $OutDir "katana.png"
 Process-Direct (Join-Path $RawDir "cutin-slash.png")  (Join-Path $OutDir "cutin-slash.png")  420 236
 Process-Direct (Join-Path $RawDir "cutin-eyes.png")   (Join-Path $OutDir "cutin-eyes.png")   420 236
 Process-Direct (Join-Path $RawDir "portrait-2b.png")  (Join-Path $OutDir "portrait-2b.png")  160 160
-Process-Direct (Join-Path $RawDir "portrait-pod.png") (Join-Path $OutDir "portrait-pod.png") 160 160
+Process-Cutout (Join-Path $RawDir "portrait-pod.png") (Join-Path $OutDir "portrait-pod.png") 160 160 12 12 $true
 Process-Direct (Join-Path $RawDir "portrait-2b.png")  (Join-Path $OutDir "tray.png")         32 32
 
 $p2b = [System.Drawing.Bitmap]::new((Join-Path $OutDir "portrait-2b.png"))
