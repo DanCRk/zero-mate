@@ -30,6 +30,98 @@ try {
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
+
+function resolveTarget(rawTarget) {
+  let t = String(rawTarget || '').trim();
+  t = t.replace(/^["']|["']$/g, '').trim();
+
+  const SITES = {
+    'youtube': 'https://www.youtube.com',
+    'google': 'https://www.google.com',
+    'github': 'https://github.com',
+    'gmail': 'https://mail.google.com',
+    'twitter': 'https://twitter.com',
+    'x': 'https://x.com',
+    'reddit': 'https://www.reddit.com',
+    'chatgpt': 'https://chatgpt.com',
+    'claude': 'https://claude.ai',
+    'discord': 'https://discord.com/app',
+    'netflix': 'https://www.netflix.com',
+    'spotify web': 'https://open.spotify.com',
+    'twitch': 'https://www.twitch.tv',
+  };
+
+  const lower = t.toLowerCase();
+  if (SITES[lower]) {
+    return { type: 'url', target: SITES[lower] };
+  }
+
+  if (/^https?:\/\//i.test(t)) {
+    return { type: 'url', target: t };
+  }
+  if (/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+\/?.*$/i.test(t) && !t.endsWith('.exe') && !t.endsWith('.bat') && !t.endsWith('.cmd')) {
+    return { type: 'url', target: `https://${t}` };
+  }
+
+  const APPS = {
+    'chrome': 'chrome',
+    'google chrome': 'chrome',
+    'navegador chrome': 'chrome',
+    'edge': 'msedge',
+    'microsoft edge': 'msedge',
+    'msedge': 'msedge',
+    'firefox': 'firefox',
+    'mozilla firefox': 'firefox',
+    'brave': 'brave',
+    'notepad': 'notepad.exe',
+    'bloc de notas': 'notepad.exe',
+    'bloc notas': 'notepad.exe',
+    'libreta de notas': 'notepad.exe',
+    'calc': 'calc.exe',
+    'calculadora': 'calc.exe',
+    'calculator': 'calc.exe',
+    'explorer': 'explorer.exe',
+    'explorador': 'explorer.exe',
+    'explorador de archivos': 'explorer.exe',
+    'file explorer': 'explorer.exe',
+    'archivos': 'explorer.exe',
+    'mis archivos': 'explorer.exe',
+    'vscode': 'code',
+    'code': 'code',
+    'visual studio code': 'code',
+    'terminal': 'wt.exe',
+    'windows terminal': 'wt.exe',
+    'powershell': 'powershell.exe',
+    'cmd': 'cmd.exe',
+    'consola': 'cmd.exe',
+    'simbolo del sistema': 'cmd.exe',
+    'settings': 'ms-settings:',
+    'configuracion': 'ms-settings:',
+    'configuración': 'ms-settings:',
+    'configuracion de windows': 'ms-settings:',
+    'configuración de windows': 'ms-settings:',
+    'windows settings': 'ms-settings:',
+    'taskmgr': 'taskmgr.exe',
+    'task manager': 'taskmgr.exe',
+    'administrador de tareas': 'taskmgr.exe',
+    'admin de tareas': 'taskmgr.exe',
+    'spotify': 'spotify',
+    'paint': 'mspaint.exe',
+    'control': 'control.exe',
+    'panel de control': 'control.exe',
+  };
+
+  if (APPS[lower]) {
+    const resolved = APPS[lower];
+    if (resolved.startsWith('ms-settings:')) {
+      return { type: 'uri', target: resolved };
+    }
+    return { type: 'app', target: resolved };
+  }
+
+  return { type: 'raw', target: t };
+}
+
 class ToolEngine {
   constructor({ getConfig, setConfig, getActiveWindow, requestPermission }) {
     this.getConfig = getConfig;
@@ -110,37 +202,60 @@ class ToolEngine {
 
   async open_app_or_url({ target }) {
     if (!target) throw new Error('Parámetro "target" requerido.');
-    const t = String(target).trim();
+    const resolved = resolveTarget(target);
+    const isWin = process.platform === 'win32';
 
-    if (/^https?:\/\//i.test(t)) {
+    if (resolved.type === 'url') {
+      const url = resolved.target;
       if (electron?.shell?.openExternal) {
-        await electron.shell.openExternal(t);
+        await electron.shell.openExternal(url);
+      } else if (isWin) {
+        spawn('cmd.exe', ['/c', 'start', '', url], { windowsHide: true, detached: true, stdio: 'ignore' });
       } else {
-        spawn('explorer.exe', [t], { detached: true, stdio: 'ignore' });
+        spawn('xdg-open', [url], { detached: true, stdio: 'ignore' });
       }
-      return { ok: true, action: 'open_url', target: t };
+      return { ok: true, action: 'open_url', target: url, resolvedFrom: target };
     }
 
-    // If it's a file or directory path that exists
-    if (fs.existsSync(t)) {
+    if (resolved.type === 'uri') {
+      const uri = resolved.target;
+      if (isWin) {
+        spawn('cmd.exe', ['/c', 'start', '', uri], { windowsHide: true, detached: true, stdio: 'ignore' });
+      }
+      return { ok: true, action: 'open_uri', target: uri, resolvedFrom: target };
+    }
+
+    const localPath = resolved.target;
+    if (fs.existsSync(localPath)) {
       if (electron?.shell?.openPath) {
-        const res = await electron.shell.openPath(t);
+        const res = await electron.shell.openPath(localPath);
         if (res) throw new Error(`No se pudo abrir la ruta: ${res}`);
+      } else if (isWin) {
+        spawn('explorer.exe', [localPath], { detached: true, stdio: 'ignore' });
       } else {
-        spawn('explorer.exe', [t], { detached: true, stdio: 'ignore' });
+        spawn('xdg-open', [localPath], { detached: true, stdio: 'ignore' });
       }
-      return { ok: true, action: 'open_path', target: t };
+      return { ok: true, action: 'open_path', target: localPath, resolvedFrom: target };
     }
 
-    // Otherwise launch as executable or Windows URI
-    const child = spawn(t, [], {
-      detached: true,
-      shell: true,
-      windowsHide: true,
-      stdio: 'ignore',
-    });
-    child.unref();
-    return { ok: true, action: 'launch_app', target: t };
+    const appTarget = resolved.target;
+    if (isWin) {
+      const child = spawn('cmd.exe', ['/c', 'start', '', appTarget], {
+        detached: true,
+        windowsHide: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+    } else {
+      const child = spawn(appTarget, [], {
+        detached: true,
+        shell: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+    }
+
+    return { ok: true, action: 'launch_app', target: appTarget, resolvedFrom: target };
   }
 
   async media_and_volume({ action = 'up', value = null }) {

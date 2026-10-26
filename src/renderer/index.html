@@ -114,9 +114,11 @@
           <input id="brain-key-claude" class="chat-bar__input" type="password" placeholder="sk-ant-..." />
         </label>
         <div class="brain-modal__actions">
+          <button type="button" id="brain-ping-btn" class="yorha-btn">[ TEST CONNECTION / PING AI ]</button>
           <button type="button" id="brain-cancel-btn" class="yorha-btn">[ CANCELAR ]</button>
           <button type="submit" class="yorha-btn">[ GUARDAR ENLACE ]</button>
         </div>
+        <div id="brain-ping-status" class="brain-ping-status" style="margin-top:10px;font-size:11px;font-family:'JetBrains Mono',monospace;color:#d8b868;line-height:1.4;display:none;"></div>
       </form>
     </div>
   </section>
@@ -217,6 +219,7 @@
                 <option value="openai">OpenAI API</option>
                 <option value="claude-api">Anthropic Claude API</option>
               </select>
+              <button type="button" id="btn-quick-ping-ai" class="yorha-btn yorha-btn--mini" title="Test Connection / Ping AI">[ PING AI ]</button>
               <button type="button" id="btn-open-brain-keys" class="yorha-btn yorha-btn--mini" title="Configurar API Keys / Modelos">[ LLAVES / KEYS ]</button>
             </div>
           </div>
