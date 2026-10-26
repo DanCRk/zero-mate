@@ -31,6 +31,7 @@ async function boot() {
     document.fonts.load('600 16px "Chakra Petch"').catch(() => {}),
     document.fonts.load('400 11px "JetBrains Mono"').catch(() => {}),
   ]);
+  let currentConfig = config;
 
   const [charImg, sitImg, peekImg, sleepImg, spinImg, satelliteImg, podImg, katanaImg, cutinSlash, cutinEyes] = await Promise.all([
     loadImage(theme.character.spriteUrl),
@@ -305,6 +306,7 @@ async function boot() {
   });
 
   host.onConfig((cfg) => {
+    currentConfig = { ...currentConfig, ...cfg };
     soundBank.configure(cfg);
     engine.wander = cfg.wander;
     if (cfg.scale !== engine.scale) engine.setScale(cfg.scale);
