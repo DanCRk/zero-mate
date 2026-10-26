@@ -103,6 +103,7 @@ function fallbackWindowsSpeech(float32Samples, lang = 'es-ES') {
 }
 
 async function transcribePcm16k(pcmArray, lang = 'es') {
+  const normLang = typeof lang === 'object' ? (lang?.lang || 'es') : (lang || 'es');
   const float32 = pcmArray instanceof Float32Array ? pcmArray : new Float32Array(pcmArray);
   if (float32.length < 1600) {
     return { ok: false, text: '', error: 'Audio demasiado corto' };
@@ -111,7 +112,7 @@ async function transcribePcm16k(pcmArray, lang = 'es') {
   try {
     const pipe = await getWhisperPipeline();
     const out = await pipe(float32, {
-      language: lang === 'en' ? 'english' : 'spanish',
+      language: normLang === 'en' ? 'english' : 'spanish',
       task: 'transcribe',
       chunk_length_s: 30,
     });
@@ -119,7 +120,7 @@ async function transcribePcm16k(pcmArray, lang = 'es') {
     return { ok: true, text, engine: 'whisper-tiny-onnx' };
   } catch (err) {
     console.warn('[zeromate-stt] Whisper ONNX fallback to Windows Speech:', err.message);
-    const text = await fallbackWindowsSpeech(float32, lang === 'en' ? 'en-US' : 'es-ES');
+    const text = await fallbackWindowsSpeech(float32, normLang === 'en' ? 'en-US' : 'es-ES');
     return { ok: Boolean(text), text, engine: 'windows-speech-local', error: text ? null : err.message };
   }
 }
