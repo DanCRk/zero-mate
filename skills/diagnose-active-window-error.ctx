@@ -1,0 +1,6 @@
+#SKILL:diagnose-active-window-error|AI-DSL:v1
+TRIGGER:diagnose error|inspect active window|check failure|what happened
+STEPS:
+1:SCAN(capture_active_window)
+2:EXEC(read_clipboard)
+3:SAY(character:"Scanning the active window and clipboard. If any exceptions occurred, we will resolve them.")

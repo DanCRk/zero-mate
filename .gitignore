@@ -1,0 +1,29 @@
+# Dependencies & Build Outputs
+node_modules/
+dist/
+out/
+*.exe
+
+# Local AI Models & Caches
+.cache/
+models/
+
+# Runtime & Debug Captures
+captures/
+*.log
+npm-debug.log*
+*.lnk
+
+# Raw uncompressed intermediate assets
+themes/*/assets/raw/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# User specific living memory (copied from skills/user-memory.example.ctx on first boot)
+skills/user-memory.ctx
+
+# Project planning & Agent instructions (local only)
+docs/
+AGENTS.md

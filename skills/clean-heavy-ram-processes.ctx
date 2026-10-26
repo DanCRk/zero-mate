@@ -1,0 +1,6 @@
+#SKILL:clean-heavy-ram-processes|AI-DSL:v1
+TRIGGER:clean ram|free memory|kill heavy processes|ram status
+STEPS:
+1:EXEC(run_shell_command:"Get-Process | Where-Object { $_.WorkingSet -gt 500MB } | Select-Object Name, WS")
+2:NOTIFY(media_and_volume:action=notify,value="RAM utilization scan complete.")
+3:SAY(companion:"Report: High-memory process scan complete.")

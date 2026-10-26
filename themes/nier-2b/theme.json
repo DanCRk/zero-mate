@@ -1,0 +1,87 @@
+{
+  "id": "nier-2b",
+  "name": "NieR: Automata — 2B & Pod 042",
+  "character": {
+    "name": "2B",
+    "fullName": "YoRHa No.2 Type B",
+    "sprite": "assets/2b-full.png",
+    "weapon": "assets/katana.png",
+    "portrait": "assets/portrait-2b.png",
+    "cutins": {
+      "slash": "assets/cutin-slash.png",
+      "eyes": "assets/cutin-eyes.png"
+    }
+  },
+  "companion": {
+    "name": "Pod 042",
+    "fullName": "Tactical Support Unit Pod 042",
+    "sprite": "assets/pod-042.png",
+    "portrait": "assets/portrait-pod.png"
+  },
+  "palette": {
+    "bg": "#1a1917",
+    "bgSecondary": "#272522",
+    "paper": "#dad4bb",
+    "paperMuted": "#9e9882",
+    "accent": "#c8c2aa",
+    "gold": "#d8b868",
+    "alert": "#cd4439",
+    "laser": "#e8dfc5"
+  },
+  "slots": {
+    "sit_window": {
+      "animation": "walk_and_sit_ledge",
+      "sounds": ["footstep-metal", "cloth-rustle"]
+    },
+    "traverse": {
+      "animation": "pod_glide",
+      "sounds": ["pod-glide", "cloth-rustle"]
+    },
+    "idle_quirk": {
+      "animation": "katana_inspect_or_pet_pod",
+      "sounds": ["weapon-hum", "pod-happy-chirp"]
+    },
+    "companion_interact": {
+      "animation": "pet_pod_affection",
+      "sounds": ["pod-happy-chirp"]
+    },
+    "poke_annoyed": {
+      "animation": "katana_slash_cursor",
+      "sounds": ["katana-slash"]
+    },
+    "tool_work": {
+      "animation": "arms_crossed_pod_scan",
+      "sounds": ["pod-scan", "pod-fire"]
+    },
+    "alert_confirm": {
+      "animation": "pod_fly_to_cursor_alert",
+      "sounds": ["alert-permission"]
+    },
+    "victory": {
+      "animation": "katana_spin_sheathe",
+      "sounds": ["katana-sheathe", "ui-confirm"]
+    },
+    "stow": {
+      "animation": "bunker_transport_pod_remain",
+      "sounds": ["bunker-transport"]
+    }
+  },
+  "sounds": {
+    "ui-open": "sounds/ui-open.wav",
+    "ui-confirm": "sounds/ui-confirm.wav",
+    "ui-cancel": "sounds/ui-cancel.wav",
+    "alert-permission": "sounds/alert-permission.wav",
+    "pod-scan": "sounds/pod-scan.wav",
+    "pod-glide": "sounds/pod-glide.wav",
+    "pod-fire": "sounds/pod-fire.wav",
+    "pod-happy-chirp": "sounds/pod-happy-chirp.wav",
+    "weapon-hum": "sounds/weapon-hum.wav",
+    "katana-slash": "sounds/katana-slash.wav",
+    "katana-sheathe": "sounds/katana-sheathe.wav",
+    "bunker-transport": "sounds/bunker-transport.wav",
+    "error-logic": "sounds/error-logic.wav",
+    "talk-blip": "sounds/talk-blip.wav",
+    "footstep-metal": "sounds/footstep-metal.wav",
+    "cloth-rustle": "sounds/cloth-rustle.wav"
+  }
+}

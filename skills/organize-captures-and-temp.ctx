@@ -1,0 +1,5 @@
+#SKILL:organize-captures-and-temp|AI-DSL:v1
+TRIGGER:clean captures|organize temp files|purge screenshots
+STEPS:
+1:SEARCH(search_files:query="*.png",baseDir="./captures")
+2:SAY(companion:"Report: Local capture directory verified in the workspace.")

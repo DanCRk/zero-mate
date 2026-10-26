@@ -1,0 +1,5 @@
+#SKILL:organize-downloads-folder|AI-DSL:v1
+TRIGGER:organize downloads|clean downloads|sort downloads
+STEPS:
+1:SEARCH(search_files:query="*.*",baseDir="~/Downloads",maxResults=20)
+2:SAY(companion:"Report: Inspecting downloads directory to categorize recent files by extension.")

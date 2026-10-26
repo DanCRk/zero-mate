@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' zeromate: yorha:; script-src 'self' zeromate: yorha:; style-src 'self' 'unsafe-inline' zeromate: yorha:; img-src 'self' zeromate: yorha: data:; font-src 'self' zeromate: yorha:; media-src 'self' zeromate: yorha: blob:; connect-src 'self' zeromate: yorha:">
+  <title>ZeroMate Desktop Agent</title>
+  <link rel="stylesheet" href="styles/yorha.css">
+</head>
+<body>
+  <canvas id="fx" class="fx" aria-hidden="true"></canvas>
+
+  <div id="character" class="character">
+    <canvas id="weapon-back" class="character__weapon" aria-hidden="true"></canvas>
+    <canvas id="sprite" class="character__sprite" aria-label="Character Sprite"></canvas>
+  </div>
+
+  <div id="pod" class="pod" aria-label="Companion">
+    <canvas id="pod-canvas" class="pod__canvas"></canvas>
+  </div>
+
+  <aside id="panel" class="panel" data-kind="info" data-speaker="2b" hidden aria-live="polite">
+    <div class="panel__frame">
+      <div class="panel__header-bar">
+        <span class="panel__squares" aria-hidden="true">■ □ ■</span>
+        <span class="panel__who">ZeroMate</span>
+        <span class="panel__tag"></span>
+        <span class="panel__state">ACTIVO</span>
+      </div>
+      <div class="panel__plate">
+        <figure class="panel__face" aria-hidden="true">
+          <img id="panel-portrait" src="../../themes/nier-2b/assets/portrait-2b.png" alt="">
+        </figure>
+        <div class="panel__body">
+          <p class="panel__line"></p>
+          <p class="panel__quote" hidden></p>
+          <div class="panel__reply" hidden></div>
+          <p class="panel__summary" hidden></p>
+          <ol class="panel__log" hidden></ol>
+          <div id="panel-actions" class="panel__actions" hidden>
+            <button type="button" class="yorha-btn" data-action="approve">[ AUTORIZAR ]</button>
+            <button type="button" class="yorha-btn" data-action="always">[ PERMITIR SIEMPRE ]</button>
+            <button type="button" class="yorha-btn yorha-btn--deny" data-action="deny">[ DENEGAR ]</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel__tail" aria-hidden="true"></div>
+    </div>
+  </aside>
+
+  <div id="ticker" class="ticker" hidden>
+    <div class="ticker__plate">
+      <span class="ticker__dot" aria-hidden="true"></span>
+      <span class="ticker__verb">POD 042</span>
+      <span class="ticker__target">ESCANEANDO</span>
+    </div>
+  </div>
+
+  <section id="chat-bar" class="chat-bar" hidden aria-label="Consola de enlace táctico ZeroMate">
+    <div class="chat-bar__frame">
+      <header class="chat-bar__header">
+        <span class="panel__squares" aria-hidden="true">■ □ ■</span>
+        <span id="chat-status" class="chat-bar__title">ENLACE TÁCTICO // ZEROMATE</span>
+        <button type="button" id="chat-cfg-btn" class="yorha-btn yorha-btn--mini" title="Configurar Cerebro IA">[ CEREBRO ]</button>
+        <button type="button" id="chat-close-btn" class="yorha-btn yorha-btn--mini" title="Cerrar (Esc)">[ × ]</button>
+      </header>
+      <form id="chat-form" class="chat-bar__form">
+        <input id="chat-input" class="chat-bar__input" type="text" autocomplete="off"
+               placeholder="Transmitir orden al agente..." />
+        <button type="button" id="chat-mic-btn" class="yorha-btn">[ VOZ (Ctrl+Esp) ]</button>
+        <button type="submit" class="yorha-btn">[ ENVIAR ]</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="brain-modal" class="brain-modal" hidden aria-label="Configuración de Cerebro IA ZeroMate">
+    <div class="brain-modal__frame">
+      <header class="chat-bar__header">
+        <span class="panel__squares" aria-hidden="true">■ □ ■</span>
+        <span class="chat-bar__title">ENRUTADOR MULTI-CEREBRO // ZEROMATE</span>
+        <button type="button" id="brain-close-btn" class="yorha-btn yorha-btn--mini">[ × ]</button>
+      </header>
+      <form id="brain-form" class="brain-modal__form">
+        <label class="brain-modal__field">
+          <span>PROVEEDOR ACTIVO (0 VENTANAS DE CONSOLA)</span>
+          <select id="brain-provider" class="chat-bar__input">
+            <option value="agy">Antigravity CLI (Headless · Pipe Directo)</option>
+            <option value="claude-cli">Claude Code CLI (Headless · Pipe Directo)</option>
+            <option value="ollama">Ollama Local (127.0.0.1:11434)</option>
+            <option value="gemini">Google Gemini API</option>
+            <option value="openai">OpenAI API</option>
+            <option value="claude-api">Anthropic Claude API</option>
+          </select>
+        </label>
+        <label class="brain-modal__field">
+          <span>MODELO (OPCIONAL — EJ. gemini-2.5-flash, llama3.2, gpt-4o-mini)</span>
+          <input id="brain-model" class="chat-bar__input" type="text" placeholder="Por defecto del proveedor..." />
+        </label>
+        <label class="brain-modal__field">
+          <span>URL OLLAMA LOCAL</span>
+          <input id="brain-ollama-url" class="chat-bar__input" type="text" placeholder="http://127.0.0.1:11434" />
+        </label>
+        <label class="brain-modal__field">
+          <span>GEMINI API KEY</span>
+          <input id="brain-key-gemini" class="chat-bar__input" type="password" placeholder="AIza..." />
+        </label>
+        <label class="brain-modal__field">
+          <span>OPENAI API KEY</span>
+          <input id="brain-key-openai" class="chat-bar__input" type="password" placeholder="sk-..." />
+        </label>
+        <label class="brain-modal__field">
+          <span>CLAUDE (ANTHROPIC) API KEY</span>
+          <input id="brain-key-claude" class="chat-bar__input" type="password" placeholder="sk-ant-..." />
+        </label>
+        <div class="brain-modal__actions">
+          <button type="button" id="brain-cancel-btn" class="yorha-btn">[ CANCELAR ]</button>
+          <button type="submit" class="yorha-btn">[ GUARDAR ENLACE ]</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

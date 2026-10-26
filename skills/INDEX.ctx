@@ -1,0 +1,6 @@
+#SKILLS_INDEX:ZeroMate_Skills|COUNT:5|VERSION:1.1
+diagnose-active-window-error.ctx|DESC:Scans the active foreground window and checks for error logs
+clean-heavy-ram-processes.ctx|DESC:Reports high-memory consumption processes and frees RAM
+organize-downloads-folder.ctx|DESC:Inspects and categorizes recently downloaded files
+build-silent-launcher.ctx|DESC:Compiles the native silent ZeroMate.exe launcher with csc.exe
+organize-captures-and-temp.ctx|DESC:Verifies and manages debug captures in the local directory

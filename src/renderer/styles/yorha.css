@@ -1,0 +1,541 @@
+/* ------------------------------------------------------------------
+   YoRHa Tactical HUD Overlay (NieR: Automata — 2B + Pod 042)
+   Palette: Bunker charcoal (#1a1917), YoRHa beige (#dad4bb),
+   tactical gold (#d8b868), logic alert crimson (#cd4439).
+------------------------------------------------------------------- */
+
+@font-face {
+  font-family: 'Chakra Petch';
+  src: url('../../../node_modules/@fontsource/chakra-petch/files/chakra-petch-latin-600-normal.woff2') format('woff2');
+  font-weight: 600;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  src: url('../../../node_modules/@fontsource/chakra-petch/files/chakra-petch-latin-700-normal.woff2') format('woff2');
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../../../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../../../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff2') format('woff2');
+  font-weight: 600;
+  font-display: block;
+}
+
+:root {
+  --yorha-bg: rgba(26, 25, 23, 0.94);
+  --yorha-bg-2: rgba(42, 40, 36, 0.95);
+  --yorha-beige: #dad4bb;
+  --yorha-beige-dim: #9e9882;
+  --yorha-gold: #d8b868;
+  --yorha-alert: #cd4439;
+  --yorha-border: rgba(218, 212, 187, 0.48);
+
+  --font-display: 'Chakra Petch', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', Consolas, monospace;
+
+  --text-line: clamp(14px, calc(0.4vw + 8.5px), 17px);
+  --text-meta: 10px;
+  --text-data: 11px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  cursor: default;
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ---------- 2B & Pod 042 Layers ---------- */
+
+.fx {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.character {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  will-change: transform;
+}
+
+.character__weapon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.character__sprite {
+  position: relative;
+  z-index: 2;
+  display: block;
+}
+
+.pod {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  will-change: transform;
+}
+
+.pod__canvas {
+  display: block;
+}
+
+/* ---------- Holographic YoRHa Panel ---------- */
+
+.panel {
+  --accent: var(--yorha-beige);
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  width: clamp(310px, 23vw, 410px);
+  color: var(--yorha-beige);
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.65));
+  will-change: transform;
+}
+
+.panel[data-kind='work'] { --accent: var(--yorha-gold); }
+.panel[data-kind='done'] { --accent: var(--yorha-gold); }
+.panel[data-kind='alert'] { --accent: var(--yorha-alert); }
+.panel[data-kind='error'] { --accent: var(--yorha-alert); }
+
+.panel__frame {
+  position: relative;
+  border: 1px solid var(--yorha-border);
+  background: var(--yorha-bg);
+  box-shadow: inset 0 0 0 1px rgba(218, 212, 187, 0.12);
+}
+
+.panel__frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(218, 212, 187, 0.03) 0px,
+    rgba(218, 212, 187, 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+}
+
+.panel.is-entering .panel__frame {
+  animation: yorha-open 190ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.panel.is-leaving .panel__frame {
+  animation: yorha-close 140ms ease-in both;
+}
+
+@keyframes yorha-open {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.15) scaleX(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1) scaleX(1);
+  }
+}
+
+@keyframes yorha-close {
+  0% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(0.1);
+  }
+}
+
+.panel__header-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--yorha-beige);
+  color: #1a1917;
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.panel[data-kind='alert'] .panel__header-bar,
+.panel[data-kind='error'] .panel__header-bar {
+  background: var(--yorha-alert);
+  color: #fff6f4;
+}
+
+.panel__squares {
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+
+.panel__who {
+  font-weight: 700;
+}
+
+.panel__tag {
+  color: rgba(26, 25, 23, 0.72);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel__state {
+  margin-left: auto;
+  padding: 1px 6px;
+  background: #1a1917;
+  color: var(--yorha-beige);
+  font-size: 9px;
+}
+
+.panel__plate {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 12px;
+  padding: 12px 14px 14px 12px;
+}
+
+.panel__face {
+  margin: 0;
+  width: 62px;
+  height: 62px;
+  border: 1px solid var(--accent);
+  background: #141311;
+  padding: 2px;
+}
+
+.panel__face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.panel__body {
+  min-width: 0;
+}
+
+.panel__line {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-line);
+  line-height: 1.3;
+  color: var(--yorha-beige);
+  overflow-wrap: anywhere;
+}
+
+.panel__quote {
+  margin: 8px 0 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  line-height: 1.45;
+  color: var(--yorha-beige-dim);
+}
+
+.panel__summary {
+  margin: 8px 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.panel__summary::before {
+  content: '❖ ';
+}
+
+.panel__log {
+  margin: 8px 0 0;
+  padding: 6px 0 0;
+  list-style: none;
+  border-top: 1px solid rgba(218, 212, 187, 0.18);
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  line-height: 1.55;
+}
+
+.panel__log li {
+  display: grid;
+  grid-template-columns: 10ch 1fr;
+  gap: 6px;
+  color: var(--yorha-beige-dim);
+}
+
+.panel__verb {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.yorha-btn {
+  appearance: none;
+  border: 1px solid var(--yorha-beige);
+  background: rgba(218, 212, 187, 0.1);
+  color: var(--yorha-beige);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.yorha-btn:hover {
+  background: var(--yorha-beige);
+  color: #1a1917;
+}
+
+.yorha-btn--deny {
+  border-color: var(--yorha-alert);
+  color: #ff9c93;
+}
+
+.yorha-btn--deny:hover {
+  background: var(--yorha-alert);
+  color: #fff;
+}
+
+.panel__tail {
+  position: absolute;
+  left: var(--tail-x, 50%);
+  top: 100%;
+  width: 18px;
+  height: 10px;
+  margin-left: -9px;
+  background: var(--yorha-beige);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.panel[data-below='true'] .panel__tail {
+  top: auto;
+  bottom: 100%;
+  transform: scaleY(-1);
+}
+
+/* ---------- Tactical Ticker ---------- */
+
+.ticker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  will-change: transform;
+}
+
+.ticker__plate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 340px;
+  padding: 4px 12px 4px 9px;
+  background: var(--yorha-bg);
+  border: 1px solid var(--yorha-border);
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  color: var(--yorha-beige);
+  white-space: nowrap;
+}
+
+.ticker__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--yorha-gold);
+  animation: yorha-blink 700ms steps(2, jump-none) infinite;
+}
+
+@keyframes yorha-blink {
+  0% { opacity: 1; }
+  100% { opacity: 0.25; }
+}
+
+.ticker__verb {
+  color: var(--yorha-gold);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.ticker__target {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--yorha-beige-dim);
+}
+
+/* ---------- Holographic YoRHa Chat Bar ---------- */
+
+.chat-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  width: clamp(360px, 28vw, 480px);
+  color: var(--yorha-beige);
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.72));
+  will-change: transform;
+}
+
+.chat-bar__frame {
+  border: 1px solid var(--yorha-border);
+  background: var(--yorha-bg);
+  box-shadow: inset 0 0 0 1px rgba(218, 212, 187, 0.14);
+}
+
+.chat-bar[data-recording='true'] .chat-bar__frame {
+  border-color: var(--yorha-gold);
+  box-shadow: 0 0 12px rgba(216, 184, 104, 0.35);
+}
+
+.chat-bar__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: var(--yorha-beige);
+  color: #1a1917;
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.chat-bar[data-recording='true'] .chat-bar__header {
+  background: var(--yorha-gold);
+}
+
+.chat-bar__title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.yorha-btn--mini {
+  border-color: #1a1917;
+  background: rgba(26, 25, 23, 0.15);
+  color: #1a1917;
+  padding: 1px 5px;
+  font-size: 9px;
+}
+
+.yorha-btn--mini:hover {
+  background: #1a1917;
+  color: var(--yorha-beige);
+}
+
+.chat-bar__form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+}
+
+.chat-bar__input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--yorha-border);
+  background: rgba(16, 15, 13, 0.9);
+  color: var(--yorha-beige);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+}
+
+.chat-bar__input:focus {
+  border-color: var(--yorha-gold);
+}
+
+.chat-bar__input::placeholder {
+  color: var(--yorha-beige-dim);
+}
+
+/* ---------- YoRHa Multi-Brain Config Modal ---------- */
+
+.brain-modal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  width: clamp(360px, 32vw, 440px);
+  color: var(--yorha-beige);
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.85));
+}
+
+.brain-modal__frame {
+  border: 1px solid var(--yorha-border);
+  background: var(--yorha-bg);
+  box-shadow: inset 0 0 0 1px rgba(218, 212, 187, 0.16);
+}
+
+.brain-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.brain-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--yorha-beige-dim);
+}
+
+.brain-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+

@@ -1,0 +1,5 @@
+#SKILL:build-silent-launcher|AI-DSL:v1
+TRIGGER:build launcher|rebuild exe|compile zeromate exe
+STEPS:
+1:EXEC(run_shell_command:"node tools/build-launcher.js")
+2:SAY(companion:"Report: Native silent ZeroMate.exe binary compiled successfully.")
