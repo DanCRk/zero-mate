@@ -22,10 +22,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Prepare Assets & Launcher
         run: |
@@ -72,9 +71,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          name: ZeroMate ${{ github.ref_name || 'v0.3.1-alpha.1' }}
           body_path: release_body.md
           draft: false
-          prerelease: true
+          prerelease: false
+          make_latest: true
           files: |
             dist/ZeroMate-Setup-*.exe
             ZeroMate.exe
