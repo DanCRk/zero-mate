@@ -22,6 +22,26 @@ process.stdin.on('end', () => {
     return process.exit(0);
   }
 
+  // Normalize hook event name and fields
+  payload.hook_event_name = payload.hook_event_name || payload.event || payload.type;
+  if (payload.hook_event_name === 'PermissionRequest' || payload.type === 'PermissionRequest') {
+    payload.hook_event_name = 'PermissionRequest';
+    payload.tool_name = payload.tool_name || payload.tool || (payload.tool_input && payload.tool_input.name) || 'Herramienta';
+    if (!payload.command) {
+      if (typeof payload.tool_input === 'string') {
+        payload.command = payload.tool_input;
+      } else if (payload.tool_input?.command) {
+        payload.command = payload.tool_input.command;
+      } else if (payload.tool_input?.cmd) {
+        payload.command = payload.tool_input.cmd;
+      } else if (payload.tool_input?.question) {
+        payload.command = payload.tool_input.question;
+      } else if (payload.tool_input && typeof payload.tool_input === 'object') {
+        payload.command = JSON.stringify(payload.tool_input);
+      }
+    }
+  }
+
   const body = Buffer.from(JSON.stringify(payload), 'utf8');
 
   function sendToPort(port, onDone) {

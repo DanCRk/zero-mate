@@ -409,11 +409,24 @@ async function boot() {
         line: `Anomalía detectada en [${evt.tool_name || 'herramienta'}]. Revisando registros.`,
         hold: 4500,
       });
-    } else if (type === 'PermissionRequest') {
-      // Permission request requires human action: retains alert sound
+    } else if (
+      type === 'PermissionRequest' ||
+      (type === 'Notification' && (evt.notification_type === 'permission_prompt' || evt.notification_type === 'question'))
+    ) {
+      const cmdText =
+        evt.command ||
+        evt.message ||
+        evt.tool_input?.command ||
+        evt.tool_input?.question ||
+        (typeof evt.tool_input === 'object' ? JSON.stringify(evt.tool_input) : '') ||
+        'Operación en espera de autorización';
+
       engine.triggerSlot('alert_confirm', {
-        tool: evt.tool_name || 'PERMISO',
-        command: evt.command || JSON.stringify(evt.tool_input || {}),
+        tool: evt.tool_name || evt.title || (evt.notification_type === 'question' ? 'PREGUNTA' : 'AUTORIZACIÓN'),
+        command: cmdText,
+        line: evt.notification_type === 'question'
+          ? 'Alerta: El agente requiere confirmación o directiva táctica del operador.'
+          : undefined,
       });
     } else if (type === 'Notification' && evt.message) {
       if (allowHookAudio) soundBank.play('pod-ack');

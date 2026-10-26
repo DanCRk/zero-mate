@@ -163,12 +163,15 @@ function buildEvents(payload) {
 
     if (toolName === 'run_command') {
       const cmd = mapped.tool_input.command || mapped.tool_input.description || 'PowerShell';
+      const isSensitive = /git\s+push|rm\s+-|Remove-Item|drop|delete|destroy|npm\s+publish|curl\s+-X\s+DELETE/i.test(cmd);
       events.push({
         evt: {
           ...base,
-          hook_event_name: 'Notification',
+          hook_event_name: 'PermissionRequest',
           notification_type: 'permission_prompt',
-          title: 'Permiso requerido',
+          tool_name: 'PowerShell',
+          command: cmd,
+          title: isSensitive ? 'Comando sensible detectado' : 'Permiso requerido',
           message: cmd,
         },
       });
@@ -176,10 +179,12 @@ function buildEvents(payload) {
       events.push({
         evt: {
           ...base,
-          hook_event_name: 'Notification',
+          hook_event_name: 'PermissionRequest',
           notification_type: 'question',
-          title: 'Pregunta',
-          message: mapped.tool_input.question || 'Antigravity ha solicitado confirmación',
+          tool_name: 'Pregunta del Operador',
+          command: mapped.tool_input.question || 'Antigravity ha solicitado confirmación',
+          title: 'Confirmación requerida',
+          message: mapped.tool_input.question,
         },
       });
     } else if (toolName === 'invoke_subagent') {
