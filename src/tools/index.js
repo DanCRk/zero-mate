@@ -35,27 +35,90 @@ function resolveTarget(rawTarget) {
   let t = String(rawTarget || '').trim();
   t = t.replace(/^["']|["']$/g, '').trim();
 
+  const lower = t.toLowerCase();
+  const stripped = lower.replace(/^(?:el|la|los|las|un|una|mi|mis|the|a|an)\s+/i, '').trim();
+
+  // 1. Browsers & Internet (Open default browser with Google or web)
+  const BROWSER_KEYS = [
+    'navegador', 'el navegador', 'navegador web', 'browser', 'web browser',
+    'internet', 'la web', 'el internet', 'web'
+  ];
+  if (BROWSER_KEYS.includes(lower) || BROWSER_KEYS.includes(stripped)) {
+    return { type: 'url', target: 'https://www.google.com' };
+  }
+
+  // 2. Known popular websites / web services
   const SITES = {
     'youtube': 'https://www.youtube.com',
     'google': 'https://www.google.com',
     'github': 'https://github.com',
     'gmail': 'https://mail.google.com',
+    'correo': 'https://mail.google.com',
+    'email': 'https://mail.google.com',
+    'mail': 'https://mail.google.com',
     'twitter': 'https://twitter.com',
     'x': 'https://x.com',
     'reddit': 'https://www.reddit.com',
     'chatgpt': 'https://chatgpt.com',
     'claude': 'https://claude.ai',
+    'gemini': 'https://gemini.google.com',
     'discord': 'https://discord.com/app',
+    'discord web': 'https://discord.com/app',
     'netflix': 'https://www.netflix.com',
     'spotify web': 'https://open.spotify.com',
     'twitch': 'https://www.twitch.tv',
+    'whatsapp': 'https://web.whatsapp.com',
+    'whatsapp web': 'https://web.whatsapp.com',
+    'facebook': 'https://www.facebook.com',
+    'instagram': 'https://www.instagram.com',
+    'drive': 'https://drive.google.com',
+    'google drive': 'https://drive.google.com',
+    'maps': 'https://maps.google.com',
+    'google maps': 'https://maps.google.com',
+    'traductor': 'https://translate.google.com',
+    'google translate': 'https://translate.google.com',
+    'notion': 'https://www.notion.so',
+    'linkedin': 'https://www.linkedin.com',
+    'amazon': 'https://www.amazon.com',
+    'mercadolibre': 'https://www.mercadolibre.com',
+    'mercado libre': 'https://www.mercadolibre.com',
   };
 
-  const lower = t.toLowerCase();
-  if (SITES[lower]) {
-    return { type: 'url', target: SITES[lower] };
+  if (SITES[lower] || SITES[stripped]) {
+    return { type: 'url', target: SITES[lower] || SITES[stripped] };
   }
 
+  // 3. User standard Windows folders
+  const FOLDERS = {
+    'descargas': path.join(os.homedir(), 'Downloads'),
+    'downloads': path.join(os.homedir(), 'Downloads'),
+    'carpeta descargas': path.join(os.homedir(), 'Downloads'),
+    'carpeta de descargas': path.join(os.homedir(), 'Downloads'),
+    'documentos': path.join(os.homedir(), 'Documents'),
+    'documents': path.join(os.homedir(), 'Documents'),
+    'carpeta documentos': path.join(os.homedir(), 'Documents'),
+    'carpeta de documentos': path.join(os.homedir(), 'Documents'),
+    'escritorio': path.join(os.homedir(), 'Desktop'),
+    'desktop': path.join(os.homedir(), 'Desktop'),
+    'imagenes': path.join(os.homedir(), 'Pictures'),
+    'imágenes': path.join(os.homedir(), 'Pictures'),
+    'fotos': path.join(os.homedir(), 'Pictures'),
+    'pictures': path.join(os.homedir(), 'Pictures'),
+    'musica': path.join(os.homedir(), 'Music'),
+    'música': path.join(os.homedir(), 'Music'),
+    'music': path.join(os.homedir(), 'Music'),
+    'videos': path.join(os.homedir(), 'Videos'),
+    'vídeos': path.join(os.homedir(), 'Videos'),
+    'papelera': 'shell:RecycleBinFolder',
+    'papelera de reciclaje': 'shell:RecycleBinFolder',
+    'recycle bin': 'shell:RecycleBinFolder',
+  };
+
+  if (FOLDERS[lower] || FOLDERS[stripped]) {
+    return { type: 'path', target: FOLDERS[lower] || FOLDERS[stripped] };
+  }
+
+  // 4. URL detection
   if (/^https?:\/\//i.test(t)) {
     return { type: 'url', target: t };
   }
@@ -63,6 +126,7 @@ function resolveTarget(rawTarget) {
     return { type: 'url', target: `https://${t}` };
   }
 
+  // 5. Windows Apps
   const APPS = {
     'chrome': 'chrome',
     'google chrome': 'chrome',
@@ -70,13 +134,18 @@ function resolveTarget(rawTarget) {
     'edge': 'msedge',
     'microsoft edge': 'msedge',
     'msedge': 'msedge',
+    'navegador edge': 'msedge',
     'firefox': 'firefox',
     'mozilla firefox': 'firefox',
+    'navegador firefox': 'firefox',
     'brave': 'brave',
+    'navegador brave': 'brave',
+    'opera': 'opera',
     'notepad': 'notepad.exe',
     'bloc de notas': 'notepad.exe',
     'bloc notas': 'notepad.exe',
     'libreta de notas': 'notepad.exe',
+    'notas': 'notepad.exe',
     'calc': 'calc.exe',
     'calculadora': 'calc.exe',
     'calculator': 'calc.exe',
@@ -86,6 +155,8 @@ function resolveTarget(rawTarget) {
     'file explorer': 'explorer.exe',
     'archivos': 'explorer.exe',
     'mis archivos': 'explorer.exe',
+    'carpetas': 'explorer.exe',
+    'carpeta': 'explorer.exe',
     'vscode': 'code',
     'code': 'code',
     'visual studio code': 'code',
@@ -95,12 +166,14 @@ function resolveTarget(rawTarget) {
     'cmd': 'cmd.exe',
     'consola': 'cmd.exe',
     'simbolo del sistema': 'cmd.exe',
+    'símbolo del sistema': 'cmd.exe',
     'settings': 'ms-settings:',
     'configuracion': 'ms-settings:',
     'configuración': 'ms-settings:',
     'configuracion de windows': 'ms-settings:',
     'configuración de windows': 'ms-settings:',
     'windows settings': 'ms-settings:',
+    'ajustes': 'ms-settings:',
     'taskmgr': 'taskmgr.exe',
     'task manager': 'taskmgr.exe',
     'administrador de tareas': 'taskmgr.exe',
@@ -109,11 +182,22 @@ function resolveTarget(rawTarget) {
     'paint': 'mspaint.exe',
     'control': 'control.exe',
     'panel de control': 'control.exe',
+    'reloj': 'ms-clock:',
+    'alarma': 'ms-clock:',
+    'alarmas': 'ms-clock:',
+    'clima': 'bingweather:',
+    'camara': 'microsoft.windows.camera:',
+    'cámara': 'microsoft.windows.camera:',
+    'word': 'winword.exe',
+    'excel': 'excel.exe',
+    'powerpoint': 'powerpnt.exe',
+    'steam': 'steam',
+    'discord app': 'discord',
   };
 
-  if (APPS[lower]) {
-    const resolved = APPS[lower];
-    if (resolved.startsWith('ms-settings:')) {
+  if (APPS[lower] || APPS[stripped]) {
+    const resolved = APPS[lower] || APPS[stripped];
+    if (resolved.startsWith('ms-') || resolved.startsWith('microsoft.') || resolved.startsWith('bing')) {
       return { type: 'uri', target: resolved };
     }
     return { type: 'app', target: resolved };
