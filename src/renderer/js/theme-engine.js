@@ -107,7 +107,7 @@ export class ThemeEngine {
   constructor({ charRoot, spriteCanvas, weaponCanvas, podRoot, podCanvas, images, fx, soundBank, panel, theme }) {
     this.root = charRoot;
     this.canvas = spriteCanvas;
-    this.sprite = new SpriteRenderer(spriteCanvas, images.charImg, images.sitImg, images.peekImg, images.sleepImg);
+    this.sprite = new SpriteRenderer(spriteCanvas, images.charImg, images.sitImg, images.peekImg, images.sleepImg, images.spinImg);
     this.weapon = new WeaponHaloRenderer(weaponCanvas, images.katanaImg);
     this.pod = new PodCompanion(podRoot, podCanvas, images.podImg);
     this.satelliteImg = images.satelliteImg || null;
@@ -170,6 +170,7 @@ export class ThemeEngine {
     this.sitAlphaMap = images.sitImg ? this.buildAlphaMap(images.sitImg) : null;
     this.peekAlphaMap = images.peekImg ? this.buildAlphaMap(images.peekImg) : null;
     this.sleepAlphaMap = images.sleepImg ? this.buildAlphaMap(images.sleepImg) : null;
+    this.spinAlphaMap = images.spinImg ? this.buildAlphaMap(images.spinImg) : null;
     this.setScale(this.scale);
     this.bindInteractions();
     this.loop = this.loop.bind(this);
@@ -252,7 +253,8 @@ export class ThemeEngine {
       const c = lerp(1, 0.42, this.p.sit);
       sy = sy <= SPRITE.hip + THIGH * c ? SPRITE.hip + (sy - SPRITE.hip) / c : sy + THIGH * (1 - c);
     }
-    const map = usePeekMap ? this.peekAlphaMap : (useSleepMap ? this.sleepAlphaMap : (useSitMap ? this.sitAlphaMap : this.alphaMap));
+    const useSpinMap = Boolean(this.spinAlphaMap && (this.p.pose === 'spin' || this.p.pose === 'wall_spin'));
+    const map = useSpinMap ? this.spinAlphaMap : (usePeekMap ? this.peekAlphaMap : (useSleepMap ? this.sleepAlphaMap : (useSitMap ? this.sitAlphaMap : this.alphaMap)));
     for (const [dx, dy] of [[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4]]) {
       const px = Math.round(sx + dx), py = Math.round(sy + dy);
       if (px < 0 || py < 0 || px >= SPRITE.width || py >= SPRITE.height) continue;
@@ -694,7 +696,7 @@ export class ThemeEngine {
     this.busy = false;
   }
 
-  // SLOT: edge_peek — 2B peeks/holds screen edges or hangs from ceiling with Pod 042
+  // SLOT: edge_peek — 2B firmly anchors and peeks from screen borders with hand & boots aligned to monitor bezel
   async slotEdgePeek(opts = {}) {
     if (this.stowed || this.busy) return;
     const side = opts.side || opts.arg || pick(['left', 'right', 'top']);
@@ -704,24 +706,28 @@ export class ThemeEngine {
     this.peekUntil = performance.now() + rand(8000, 12000);
 
     this.sound.play('cloth-rustle', { gain: 0.65 });
+    const s = this.scale;
+    // Exactly aligns hand grip and braced boots with monitor border (x = 0 or x = view.w)
+    const anchorOffset = Math.round(126 * s);
+
     if (side === 'left') {
       this.facing = 1;
-      this.pos.x = 42;
+      this.pos.x = anchorOffset;
       this.pos.y = this.floor;
       this.setStance('peek');
       this.weapon.setMode('hidden');
-      this.pod.pos = { x: 95, y: this.pos.y - 180 };
+      this.pod.pos = { x: this.pos.x + 95, y: this.pos.y - 180 };
     } else if (side === 'right') {
       this.facing = -1;
-      this.pos.x = this.view.w - 42;
+      this.pos.x = Math.round(this.view.w - anchorOffset);
       this.pos.y = this.floor;
       this.setStance('peek');
       this.weapon.setMode('hidden');
-      this.pod.pos = { x: this.view.w - 95, y: this.pos.y - 180 };
+      this.pod.pos = { x: this.pos.x - 95, y: this.pos.y - 180 };
     } else {
       this.facing = Math.random() < 0.5 ? 1 : -1;
       this.pos.x = clamp(rand(200, this.view.w - 200), 160, this.view.w - 160);
-      this.pos.y = 80 + (SPRITE.feet.y - SPRITE.hip) * this.scale;
+      this.pos.y = 80 + (SPRITE.feet.y - SPRITE.hip) * s;
       this.setStance('peek');
       this.weapon.setMode('hidden');
       this.pod.state = 'carry';
@@ -828,43 +834,66 @@ export class ThemeEngine {
     this.busy = false;
   }
 
-  // SLOT: wall_jump_glide — Acrobatic spin & slash off screen border, hooking onto Pod 042 to glide
+  // SLOT: wall_jump_glide — 3-Phase Dynamic Acrobatic Ninja Wall Jump & Pod Glide
   async slotWallJumpGlide(opts = {}) {
     if (this.stowed || this.busy) return;
     this.busy = true;
     this.mode = 'wall_jump';
 
     const side = opts.side || (this.pos.x > this.view.w * 0.5 ? 'right' : 'left');
-    const wallX = side === 'left' ? 48 : this.view.w - 48;
+    const s = this.scale;
+    const anchorOffset = Math.round(126 * s);
+    const wallX = side === 'left' ? anchorOffset : Math.round(this.view.w - anchorOffset);
     const startY = this.pos.y;
+
+    // FASE 1: Compresión en la pared (2B corre y se ancla al borde del monitor flexionando rodillas)
     this.facing = side === 'left' ? 1 : -1;
-
     this.setStance('walk');
-    this.sound.play('footstep-metal', { gain: 0.7 });
-    await tween(this.pos, { x: wallX, y: Math.max(160, startY - 140) }, 320, ease.out);
+    this.sound.play('cloth-rustle', { gain: 0.7 });
+    await tween(this.pos, { x: wallX, y: Math.max(180, startY - 90) }, 230, ease.out);
 
-    this.facing = side === 'left' ? -1 : 1;
-    this.sound.play('katana-slash', { rate: 1.3, gain: 0.8 });
-    this.fx.burst(wallX, this.pos.y - 80, { count: 20, power: 1.3, spread: 70 });
-    this.fx.ring(wallX, this.pos.y - 80, { radius: 90, color: '#ffffff' });
+    // Impacto y anclaje en el marco
+    this.setStance('peek');
+    this.weapon.setMode('hidden');
+    this.sound.play('footstep-metal', { gain: 0.85 });
+    this.fx.burst(wallX, this.pos.y - 40, { count: 10, power: 0.65, spread: 35 });
+    await sleep(220); // Pausa de compresión elástica preparatoria
+
+    // FASE 2: Impulso explosivo y pirueta aérea con textura acrobática 2b-acrobat-spin
+    this.facing = side === 'left' ? -1 : 1; // Giro hacia el centro
+    this.sound.play('katana-slash', { rate: 1.25, gain: 0.85 });
+    this.fx.burst(wallX, this.pos.y - 60, { count: 24, power: 1.45, spread: 85 });
+    this.fx.ring(wallX, this.pos.y - 60, { radius: 105, color: '#d8b868' });
+
+    // Inicia somersault acrobático (cambia a textura 2b-acrobat-spin vía pose: 'spin')
     this.perform('wall_spin');
-    await sleep(240);
 
+    // Salto parabólico despegándose hacia arriba y al centro
+    const apexX = clamp(wallX + (side === 'left' ? 240 : -240), 120, this.view.w - 120);
+    const apexY = Math.max(100, this.pos.y - 170);
+    await tween(this.pos, { x: apexX, y: apexY }, 310, ease.out);
+    this.sound.play('weapon-hum', { gain: 0.65 });
+    this.fx.ring(this.pos.x, this.pos.y - 35, { radius: 70, color: '#ffffff' });
+
+    // FASE 3: Enganche dinámico con Pod 042 y planeo suave a destino
+    this.pod.pos = { x: this.pos.x, y: this.pos.y - 45 };
     this.sound.play('pod-glide');
+    this.sound.play('cloth-rustle', { gain: 0.7 });
     this.pod.state = 'carry';
     this.weapon.setMode('hidden');
     this.setStance('glide');
 
     const seat = this.pickSeat();
-    const target = seat ? this.seat(seat.win, seat.dx) : { x: clamp(this.view.w * 0.5 + rand(-150, 150), 140, this.view.w - 140), y: this.floor };
-    const midPoint = {
-      x: (this.pos.x + target.x) * 0.5,
-      y: Math.min(this.pos.y, target.y) - 80,
+    const landTarget = seat ? this.seat(seat.win, seat.dx) : { x: clamp(this.view.w * 0.5 + rand(-150, 150), 140, this.view.w - 140), y: this.floor };
+    const glideMid = {
+      x: (this.pos.x + landTarget.x) * 0.5,
+      y: Math.min(this.pos.y, landTarget.y) - 45,
     };
 
-    await tween(this.pos, midPoint, 360, ease.out);
-    await tween(this.pos, target, 420, ease.in);
+    await tween(this.pos, glideMid, 290, ease.out);
+    await tween(this.pos, landTarget, 380, ease.in);
 
+    // Aterrizaje
     this.pod.state = 'follow';
     this.weapon.setMode('back');
     if (seat) {
@@ -874,7 +903,7 @@ export class ThemeEngine {
     } else {
       this.setStance('stand');
       this.sound.play('footstep-metal');
-      this.fx.burst(target.x, target.y - 12, { count: 12, power: 0.6, spread: 45 });
+      this.fx.burst(landTarget.x, landTarget.y - 12, { count: 14, power: 0.7, spread: 50 });
       await this.perform('land');
     }
 
@@ -1178,6 +1207,12 @@ export class ThemeEngine {
       this.p.sit = 0;
       this.pod.state = 'carry';
       this.weapon.setMode('hidden');
+    } else if (stance === 'spin') {
+      this.mode = 'idle';
+      this.p.sit = 0;
+      this.weapon.setMode('hidden');
+      this.pod.state = 'follow';
+      this.perform('wall_spin');
     } else if (stance === 'peek') {
       this.mode = 'peek';
       this.p.sit = 0;

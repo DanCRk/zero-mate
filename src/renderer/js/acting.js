@@ -128,16 +128,16 @@ export const ACTS = {
     ],
   },
 
-  // Acrobatic wall-jump spin off screen borders (Slot: wall_jump_glide)
+  // Acrobatic wall-jump somersault off screen borders (Slot: wall_jump_glide)
   wall_spin: {
     priority: 3,
     fps: 24,
     keys: [
-      [2, { bob: 2, tilt: -15, kickL: -0.4, kickR: 0.3, armL: -0.8, armR: 0.8, smear: [-8, -6] }],
-      [2, { bob: -12, tilt: 60, kickL: 0.5, kickR: -0.4, armL: 1.2, armR: -1.2, smear: [12, -15], echo: [8, 4] }],
-      [3, { bob: -20, tilt: 180, kickL: -0.2, kickR: 0.2, armL: 1.8, armR: 1.8, smear: [18, -12], echo: [14, 6] }],
-      [2, { bob: -12, tilt: 290, kickL: 0.3, kickR: -0.2, armL: 1.9, armR: 1.8, smear: [10, -6] }],
-      [2, { bob: -4, tilt: 0, kickL: 0, kickR: 0, armL: 1.95, armR: 1.85 }],
+      [2, { pose: 'spin', bob: 4, tilt: -10, sx: 1.08, sy: 0.92, smear: [-8, -4] }],
+      [3, { pose: 'spin', bob: -18, tilt: 12, sx: 0.95, sy: 1.12, smear: [14, -18], echo: [8, 4] }],
+      [4, { pose: 'spin', bob: -32, tilt: 28, sx: 1.02, sy: 0.98, smear: [20, -12], echo: [14, 6] }],
+      [3, { pose: 'spin', bob: -20, tilt: 15, sx: 0.96, sy: 1.06, smear: [10, -6] }],
+      [2, { pose: 'spin', bob: -8, tilt: 4, sx: 1.0, sy: 1.0 }],
     ],
   },
 

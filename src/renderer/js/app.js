@@ -32,11 +32,12 @@ async function boot() {
     document.fonts.load('400 11px "JetBrains Mono"').catch(() => {}),
   ]);
 
-  const [charImg, sitImg, peekImg, sleepImg, satelliteImg, podImg, katanaImg, cutinSlash, cutinEyes] = await Promise.all([
+  const [charImg, sitImg, peekImg, sleepImg, spinImg, satelliteImg, podImg, katanaImg, cutinSlash, cutinEyes] = await Promise.all([
     loadImage(theme.character.spriteUrl),
     theme.character.sitSpriteUrl ? loadImage(theme.character.sitSpriteUrl).catch(() => null) : Promise.resolve(null),
     theme.character.peekSpriteUrl ? loadImage(theme.character.peekSpriteUrl).catch(() => null) : Promise.resolve(null),
     theme.character.sleepSpriteUrl ? loadImage(theme.character.sleepSpriteUrl).catch(() => null) : Promise.resolve(null),
+    theme.character.spinSpriteUrl ? loadImage(theme.character.spinSpriteUrl).catch(() => null) : Promise.resolve(null),
     theme.satelliteUrl ? loadImage(theme.satelliteUrl).catch(() => null) : Promise.resolve(null),
     loadImage(theme.companion.spriteUrl),
     loadImage(theme.character.weaponUrl),
@@ -65,7 +66,7 @@ async function boot() {
     weaponCanvas: document.getElementById('weapon-back'),
     podRoot: document.getElementById('pod'),
     podCanvas: document.getElementById('pod-canvas'),
-    images: { charImg, sitImg, peekImg, sleepImg, satelliteImg, podImg, katanaImg },
+    images: { charImg, sitImg, peekImg, sleepImg, spinImg, satelliteImg, podImg, katanaImg },
     fx,
     soundBank,
     panel,
