@@ -5,6 +5,9 @@
     "name": "2B",
     "fullName": "YoRHa No.2 Type B",
     "sprite": "assets/2b-full.png",
+    "sitSprite": "assets/2b-sit.png",
+    "peekSprite": "assets/2b-peek.png",
+    "sleepSprite": "assets/2b-sleep.png",
     "weapon": "assets/katana.png",
     "portrait": "assets/portrait-2b.png",
     "cutins": {
@@ -64,8 +67,29 @@
     "stow": {
       "animation": "bunker_transport_pod_remain",
       "sounds": ["bunker-transport"]
+    },
+    "edge_peek": {
+      "animation": "edge_peek_surveillance",
+      "sounds": ["cloth-rustle", "ui-open"]
+    },
+    "window_breach": {
+      "animation": "hack_dive_window_portal",
+      "sounds": ["pod-scan", "bunker-transport"]
+    },
+    "wall_jump_glide": {
+      "animation": "wall_jump_spin_glide",
+      "sounds": ["katana-slash", "pod-glide", "footstep-metal"]
+    },
+    "bunker_uplink": {
+      "animation": "satellite_orbital_uplink",
+      "sounds": ["weapon-hum", "pod-scan", "ui-confirm"]
+    },
+    "sleep_standby": {
+      "animation": "tactical_standby_doze",
+      "sounds": ["cloth-rustle", "talk-blip"]
     }
   },
+  "satellite": "assets/bunker-satellite.png",
   "sounds": {
     "ui-open": "sounds/ui-open.wav",
     "ui-confirm": "sounds/ui-confirm.wav",

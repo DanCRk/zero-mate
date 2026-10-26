@@ -14,6 +14,7 @@ export const NEUTRAL = {
   head: 0, hair: 0, skirt: 0, tilt: 0, bob: 0, sx: 1, sy: 1,
   armL: 0, armR: 0, longL: 1, longR: 1,
   smear: [0, 0], echo: [0, 0], kickL: 0, kickR: 0,
+  pose: 'stand',
 };
 
 export const ACTS = {
@@ -29,15 +30,18 @@ export const ACTS = {
     ],
   },
 
-  // Sitting on a window top frame, legs dangling and swinging gently while hands rest on the ledge
+  // Sitting on a window top frame (2b-sit.png): hands planted on the ledge, boots kicking one after the other like Capri
   sit: {
     loop: true,
     keys: [
-      [7, { kickL: 0.16, kickR: -0.10, hair: -1.1, skirt: -0.8, arms: 0.06, head: 0.02 }],
-      [4, { kickL: 0.03, kickR: 0.03, arms: 0.05, head: 0.03 }],
-      [7, { kickL: -0.10, kickR: 0.16, hair: 1.1, skirt: 0.8, arms: 0.06, head: -0.02 }],
-      [4, { kickL: 0.03, kickR: 0.03, arms: 0.05, head: 0.01 }],
-      [8, { kickL: 0.02, kickR: 0.02, head: 0.05, arms: 0.04 }],
+      [5, { kickL: 0.18, kickR: -0.04, hair: -1.4, arms: 0 }],
+      [2, { kickL: 0.06, kickR: 0.06, arms: 0 }],
+      [5, { kickL: -0.04, kickR: 0.18, hair: 1.4, arms: 0 }],
+      [2, { kickL: 0.06, kickR: 0.06, arms: 0 }],
+      [5, { kickL: 0.18, kickR: -0.04, hair: -1.4, arms: 0 }],
+      [2, { kickL: 0.06, kickR: 0.06, arms: 0 }],
+      [5, { kickL: -0.04, kickR: 0.18, hair: 1.4, arms: 0 }],
+      [10, { kickL: 0.03, kickR: 0.03, head: 0.08, arms: 0 }],
     ],
   },
 
@@ -82,6 +86,71 @@ export const ACTS = {
     ],
   },
 
+  // Peeking from screen edge with dedicated 2b-peek sprite
+  peek: {
+    loop: true,
+    keys: [
+      [8, { pose: 'peek', head: 0.04, hair: -0.8, bob: 0 }],
+      [6, { pose: 'peek', head: 0.10, hair: 0.6, bob: -1 }],
+      [8, { pose: 'peek', head: 0.06, hair: -0.4, bob: 0 }],
+    ],
+  },
+
+  // Tactical standby / sleep mode with dedicated 2b-sleep sprite
+  sleep: {
+    loop: true,
+    keys: [
+      [12, { pose: 'sleep', head: 0.12, bob: 0, hair: 0.3, skirt: 0.2 }],
+      [14, { pose: 'sleep', head: 0.16, bob: 1.4, hair: 0.6, skirt: 0.4 }],
+      [10, { pose: 'sleep', head: 0.13, bob: 0.5, hair: 0.2, skirt: 0.1 }],
+    ],
+  },
+
+  // Intermittent nodding / dozing while in standby
+  doze: {
+    priority: 2,
+    keys: [
+      [10, { pose: 'sleep', head: 0.18, bob: 1.5 }],
+      [4,  { pose: 'sleep', head: 0.36, bob: 3.5 }],
+      [3,  { pose: 'sleep', head: 0.08, bob: -1.0 }],
+      [8,  { pose: 'sleep', head: 0.14, bob: 0 }],
+    ],
+  },
+
+  // Infiltration dive through digital window portal (Slot: window_breach)
+  dive: {
+    priority: 3,
+    fps: 24,
+    keys: [
+      [3, { bob: 4, head: -0.1, armL: -0.3, armR: -0.3, sx: 1.06, sy: 0.92 }],
+      [2, { bob: -8, head: 0.2, armL: 1.4, armR: 1.4, sx: 0.92, sy: 1.15, smear: [0, -12] }],
+      [4, { bob: -18, head: 0.4, armL: 2.1, armR: 2.1, sx: 0.82, sy: 1.28, smear: [0, -24] }],
+    ],
+  },
+
+  // Acrobatic wall-jump spin off screen borders (Slot: wall_jump_glide)
+  wall_spin: {
+    priority: 3,
+    fps: 24,
+    keys: [
+      [2, { bob: 2, tilt: -15, kickL: -0.4, kickR: 0.3, armL: -0.8, armR: 0.8, smear: [-8, -6] }],
+      [2, { bob: -12, tilt: 60, kickL: 0.5, kickR: -0.4, armL: 1.2, armR: -1.2, smear: [12, -15], echo: [8, 4] }],
+      [3, { bob: -20, tilt: 180, kickL: -0.2, kickR: 0.2, armL: 1.8, armR: 1.8, smear: [18, -12], echo: [14, 6] }],
+      [2, { bob: -12, tilt: 290, kickL: 0.3, kickR: -0.2, armL: 1.9, armR: 1.8, smear: [10, -6] }],
+      [2, { bob: -4, tilt: 0, kickL: 0, kickR: 0, armL: 1.95, armR: 1.85 }],
+    ],
+  },
+
+  // Looking up and reaching hand toward the YoRHa Bunker Satellite (Slot: bunker_uplink)
+  gaze: {
+    priority: 2,
+    keys: [
+      [6, { head: -0.32, armR: 0.85, longR: 1.1, hair: 1.2, bob: -1 }],
+      [14, { head: -0.40, armR: 1.15, longR: 1.18, hair: 1.8, bob: -2 }],
+      [6, { head: -0.34, armR: 0.95, longR: 1.12, hair: 1.4, bob: -1 }],
+    ],
+  },
+
   // ---- One-Shot Acts ----
 
   talk: {
@@ -93,8 +162,8 @@ export const ACTS = {
     priority: 3,
     fps: 24,
     keys: [
-      [2, { sy: 0.92, sx: 1.05, kickL: 0.18, kickR: 0.18, arms: -0.12 }, 'cloth'],
-      [2, { sy: 1.02, sx: 0.99, kickL: 0.08, kickR: 0.08, arms: 0.04 }],
+      [2, { sy: 0.92, sx: 1.05, kickL: 0.22, kickR: 0.22, arms: 0 }, 'cloth'],
+      [2, { sy: 1.02, sx: 0.99, kickL: 0.08, kickR: 0.08, arms: 0 }],
       [1, {}],
     ],
   },

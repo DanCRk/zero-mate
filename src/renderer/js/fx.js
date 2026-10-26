@@ -48,15 +48,15 @@ export class WeaponHaloRenderer {
     if (alpha <= 0.05 || this.mode === 'hidden' || glide) return;
 
     const s = this.scale;
-    const cx = w * 0.5 - 12 * s * facing;
-    const cy = h * 0.34 + sit * 18 * s;
+    const cx = w * 0.5 - 10 * s * facing;
+    const cy = h * 0.36 + sit * 14 * s;
     const t = now * 0.001;
 
     ctx.save();
     ctx.globalAlpha = alpha;
 
     // 1. Draw YoRHa geometric golden/white weapon levitation ring (weapon-ring)
-    const ringRadius = 46 * s;
+    const ringRadius = 54 * s;
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(1, 0.36); // Tilted 3D perspective ellipse behind her back
@@ -86,31 +86,31 @@ export class WeaponHaloRenderer {
     }
     ctx.restore();
 
-    // 2. Draw Virtuous Contract katana sprite
+    // 2. Draw Virtuous Treaty Greatsword (manodoble) sprite floating diagonally behind 2B
     if (this.katanaImg) {
       ctx.save();
       const hoverY = Math.sin(t * 2.4) * 4 * s;
-      let kx = cx + 6 * s * facing;
-      let ky = cy + hoverY;
-      let angle = -0.68 * facing;
+      let kx = cx + 4 * s * facing;
+      let ky = cy + 16 * s + hoverY;
+      let angle = -0.82 * facing;
 
       if (this.mode === 'inspect') {
         const dt = Math.min(1, (now - this.modeTime) / 300);
-        kx = cx + 32 * s * facing * dt;
-        ky = cy - 10 * s * dt;
-        angle = (-0.25 + Math.sin(t * 5) * 0.08) * facing;
+        kx = cx + 36 * s * facing * dt;
+        ky = cy - 6 * s * dt;
+        angle = (-0.28 + Math.sin(t * 5) * 0.06) * facing;
       } else if (this.mode === 'sheathe') {
         const dt = (now - this.modeTime) * 0.016;
         angle = dt * 2.4 * facing;
-        ky = cy - 22 * s;
+        ky = cy - 18 * s;
       }
 
       ctx.translate(kx, ky);
       ctx.rotate(angle);
       if (facing < 0) ctx.scale(-1, 1);
-      const kw = 195 * s;
-      const kh = 68 * s;
-      ctx.drawImage(this.katanaImg, -kw * 0.48, -kh * 0.5, kw, kh);
+      const kw = 305 * s;
+      const kh = 86 * s;
+      ctx.drawImage(this.katanaImg, -kw * 0.45, -kh * 0.5, kw, kh);
       ctx.restore();
     }
 
@@ -361,6 +361,21 @@ export class FxLayer {
     return new Promise((done) => this.add({ type: 'cutin', life, x, y, dir, image, done }));
   }
 
+  // YoRHa Hacking Window Breach effect (Slot: window_breach)
+  windowBreach(targetRect, { life = 1800 } = {}) {
+    return new Promise((done) => this.add({ type: 'window_breach', life, targetRect, done }));
+  }
+
+  // YoRHa Orbital Bunker Satellite Uplink (Slot: bunker_uplink)
+  satelliteUplink({ satelliteImg, podPosFn, life = 7500 } = {}) {
+    return new Promise((done) => this.add({ type: 'satellite_uplink', life, satelliteImg, podPosFn, done }));
+  }
+
+  // Tactical Standby Diagnostic Hologram (Slot: sleep_standby)
+  diagnosticHologram(podPosFn, charPosFn, { life = 4200 } = {}) {
+    return new Promise((done) => this.add({ type: 'diagnostic_hologram', life, podPosFn, charPosFn, done }));
+  }
+
   frame(now) {
     if (now - this.last < FRAME_MS - 2) {
       requestAnimationFrame((t) => this.frame(t));
@@ -554,6 +569,148 @@ export class FxLayer {
 
         ctx.clip();
         ctx.drawImage(it.image, 0, -20, w, h + 40);
+        ctx.restore();
+        break;
+      }
+
+      case 'window_breach': {
+        const r = it.targetRect;
+        const alpha = t < 0.8 ? 1 : (1 - t) / 0.2;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Digital hacking border pulse along window rect
+        ctx.strokeStyle = YORHA_COLORS.gold;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
+
+        ctx.strokeStyle = YORHA_COLORS.beige;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([12, 8]);
+        ctx.lineDashOffset = -t * 60;
+        ctx.strokeRect(r.x - 6, r.y - 6, r.w + 12, r.h + 12);
+        ctx.setLineDash([]);
+
+        // YoRHa Hacking Geometric Triangles around breach point
+        const cx = r.x + r.w * 0.5;
+        const cy = r.y;
+        for (let i = 0; i < 7; i++) {
+          const triAngle = (i / 7) * Math.PI * 2 + t * 4;
+          const dist = 35 + t * 65 + (i % 2) * 20;
+          const tx = cx + Math.cos(triAngle) * dist;
+          const ty = cy + Math.sin(triAngle) * (dist * 0.45);
+          const triSize = 10 + (i % 3) * 4;
+
+          ctx.save();
+          ctx.translate(tx, ty);
+          ctx.rotate(triAngle + t * 6);
+          ctx.fillStyle = i % 2 === 0 ? YORHA_COLORS.white : YORHA_COLORS.ink;
+          ctx.strokeStyle = YORHA_COLORS.gold;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(0, -triSize);
+          ctx.lineTo(triSize * 0.86, triSize * 0.5);
+          ctx.lineTo(-triSize * 0.86, triSize * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Scanline grid ripple
+        const scanY = r.y + (r.h * (t * 2 % 1));
+        ctx.fillStyle = 'rgba(216, 184, 104, 0.22)';
+        ctx.fillRect(r.x, scanY - 3, r.w, 6);
+        ctx.restore();
+        break;
+      }
+
+      case 'satellite_uplink': {
+        const viewW = this.canvas.width / (window.devicePixelRatio || 1);
+        const satX = lerp(-60, viewW + 60, t);
+        const satY = 52 + Math.sin(t * Math.PI * 4) * 6;
+        const pod = it.podPosFn?.() || { x: viewW * 0.5, y: 350 };
+
+        ctx.save();
+        // 1. Draw YoRHa Bunker Space Station
+        if (it.satelliteImg) {
+          const satW = 110, satH = 55;
+          ctx.drawImage(it.satelliteImg, satX - satW * 0.5, satY - satH * 0.5, satW, satH);
+        }
+
+        // Blinking beacon on satellite
+        if (Math.sin(t * 24) > 0) {
+          ctx.fillStyle = YORHA_COLORS.gold;
+          ctx.beginPath();
+          ctx.arc(satX, satY - 14, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 2. High-speed upward data transmission beam from Pod 042 to Bunker
+        if (t > 0.15 && t < 0.85) {
+          const beamAlpha = Math.sin((t - 0.15) / 0.7 * Math.PI);
+          ctx.globalAlpha = beamAlpha;
+
+          // Outer beam
+          const grad = ctx.createLinearGradient(pod.x, pod.y, satX, satY);
+          grad.addColorStop(0, 'rgba(216, 184, 104, 0.85)');
+          grad.addColorStop(1, 'rgba(247, 245, 235, 0.95)');
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(pod.x, pod.y);
+          ctx.lineTo(satX, satY);
+          ctx.stroke();
+
+          // Ascending digital telemetry squares
+          for (let i = 0; i < 6; i++) {
+            const frac = ((t * 3.5 + i * 0.18) % 1);
+            const px = lerp(pod.x, satX, frac);
+            const py = lerp(pod.y, satY, frac);
+            ctx.fillStyle = i % 2 === 0 ? YORHA_COLORS.gold : YORHA_COLORS.white;
+            ctx.fillRect(px - 3, py - 3, 6, 6);
+          }
+        }
+        ctx.restore();
+        break;
+      }
+
+      case 'diagnostic_hologram': {
+        const pod = it.podPosFn?.() || { x: 300, y: 200 };
+        const char = it.charPosFn?.() || { x: 300, y: 350 };
+        const alpha = t < 0.15 ? t / 0.15 : (t > 0.82 ? (1 - t) / 0.18 : 1);
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.65;
+
+        // Holographic conical projection from Pod lens down to 2B
+        const coneGrad = ctx.createLinearGradient(pod.x, pod.y, char.x, char.y);
+        coneGrad.addColorStop(0, 'rgba(216, 184, 104, 0.7)');
+        coneGrad.addColorStop(1, 'rgba(218, 212, 187, 0.08)');
+        ctx.fillStyle = coneGrad;
+        ctx.beginPath();
+        ctx.moveTo(pod.x, pod.y);
+        ctx.lineTo(char.x - 70, char.y);
+        ctx.lineTo(char.x + 70, char.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Concentric scanning rings at base
+        const ringY = char.y - 10;
+        ctx.strokeStyle = YORHA_COLORS.gold;
+        ctx.lineWidth = 1.2;
+        ctx.save();
+        ctx.translate(char.x, ringY);
+        ctx.scale(1, 0.35);
+        ctx.beginPath();
+        ctx.arc(0, 0, 50 + Math.sin(t * 12) * 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // YoRHa Diagnostic Text
+        ctx.font = '700 9px "Chakra Petch", monospace';
+        ctx.fillStyle = YORHA_COLORS.gold;
+        ctx.fillText('STANDBY // 2B RECHARGE [100%]', char.x - 62, ringY - 24);
         ctx.restore();
         break;
       }
