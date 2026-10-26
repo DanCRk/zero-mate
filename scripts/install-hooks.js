@@ -20,6 +20,7 @@ const EVENTS = [
   'PreToolUse',
   'PostToolUse',
   'PostToolUseFailure',
+  'PermissionRequest', // Native Claude Code permission request event
   'Notification',
   'Stop',
   'SubagentStart',
