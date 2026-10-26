@@ -172,7 +172,7 @@ export class PodCompanion {
     } else if (this.state === 'carry') {
       // Directly above 2B's raised hands during Pod Glide
       this.target.x = charPos.x;
-      this.target.y = charPos.y - 385 * s;
+      this.target.y = charPos.y - 455 * s;
       this.pos.x = this.target.x;
       this.pos.y = this.target.y;
       this.facing = charFacing;
