@@ -107,7 +107,7 @@ export class ThemeEngine {
   constructor({ charRoot, spriteCanvas, weaponCanvas, podRoot, podCanvas, images, fx, soundBank, panel, theme }) {
     this.root = charRoot;
     this.canvas = spriteCanvas;
-    this.sprite = new SpriteRenderer(spriteCanvas, images.charImg, images.sitImg, images.peekImg, images.sleepImg, images.spinImg);
+    this.sprite = new SpriteRenderer(spriteCanvas, images.charImg, images.sitImg, images.peekImg, images.sleepImg, images.spinImg, images.ceilingImg);
     this.weapon = new WeaponHaloRenderer(weaponCanvas, images.katanaImg);
     this.pod = new PodCompanion(podRoot, podCanvas, images.podImg);
     this.satelliteImg = images.satelliteImg || null;
@@ -732,16 +732,16 @@ export class ThemeEngine {
       this.weapon.setMode('hidden');
       this.pod.pos = { x: this.pos.x - 95, y: this.pos.y - 180 };
     } else {
-      // Ceiling Hang — Anclada firmemente al marco superior del monitor
+      // Ceiling Hang — 2B suspendida de cabeza desde el borde superior de la pantalla
       this.facing = Math.random() < 0.5 ? 1 : -1;
-      this.pos.x = clamp(rand(220, this.view.w - 220), 180, this.view.w - 180);
-      // Posición Y ajustada para que las botas rocen exactamente el borde superior (y = 0)
-      this.pos.y = Math.round((SPRITE.pad + SPRITE.feet.y) * s) - Math.round(18 * s);
+      this.pos.x = clamp(rand(240, this.view.w - 240), 200, this.view.w - 200);
+      // Las botas se anclan exactamente en el marco superior de la pantalla (y = 0)
+      this.pos.y = Math.round((SPRITE.feet.y - 12) * s);
       this.setStance('ceiling');
       this.p.pose = 'ceiling';
       this.weapon.setMode('hidden');
-      this.pod.state = 'carry';
-      this.pod.pos = { x: this.pos.x + (this.facing * 35), y: 38 };
+      this.pod.state = 'ceiling';
+      this.pod.pos = { x: this.pos.x + (this.facing * 92), y: 56 };
     }
 
     if (opts.announce !== false) {
@@ -757,7 +757,7 @@ export class ThemeEngine {
   }
 
   async unpeek(opts = {}) {
-    if (this.stance !== 'peek') return;
+    if (this.stance !== 'peek' && this.stance !== 'ceiling') return;
     if (this.peekSide === 'top') {
       this.busy = true;
       this.mode = 'idle';
@@ -1074,7 +1074,7 @@ export class ThemeEngine {
     this.stance = stance;
     this.perch = perch;
     this.p.sit = stance === 'sit' ? 1 : 0;
-    this.p.pose = stance === 'sit' ? 'sit' : (stance === 'peek' ? 'peek' : (stance === 'sleep' ? 'sleep' : 'stand'));
+    this.p.pose = stance === 'sit' ? 'sit' : (stance === 'peek' ? 'peek' : (stance === 'ceiling' ? 'ceiling' : (stance === 'sleep' ? 'sleep' : 'stand')));
     this.base = new Player(stance, { dir });
     this.pivot();
   }
@@ -1137,8 +1137,8 @@ export class ThemeEngine {
     p.smear = pose.smear;
     p.echo = pose.echo;
 
-    p.pose = pose.pose || (this.stance === 'sit' ? 'sit' : (this.stance === 'peek' ? 'peek' : (this.stance === 'sleep' ? 'sleep' : 'stand')));
-    const bob = (this.stance === 'sit' || this.stance === 'sleep' || this.stance === 'peek') ? clamp(pose.bob, -2, 2) : pose.bob;
+    p.pose = pose.pose || (this.stance === 'sit' ? 'sit' : (this.stance === 'peek' ? 'peek' : (this.stance === 'ceiling' ? 'ceiling' : (this.stance === 'sleep' ? 'sleep' : 'stand'))));
+    const bob = (this.stance === 'sit' || this.stance === 'sleep' || this.stance === 'peek' || this.stance === 'ceiling') ? clamp(pose.bob, -2, 2) : pose.bob;
     this.bob = this.dragging ? 0 : bob;
     this.tilt = this.dragging ? 0 : pose.tilt;
     this.sx = pose.sx;

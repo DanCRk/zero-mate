@@ -176,6 +176,13 @@ export class PodCompanion {
       this.pos.x = this.target.x;
       this.pos.y = this.target.y;
       this.facing = charFacing;
+    } else if (this.state === 'ceiling') {
+      // Tactical sentinel hovering alongside 2B during inverted ceiling hang
+      this.target.x = charPos.x + (charFacing * 92);
+      this.target.y = 56 + Math.sin(t * 2.2) * 4;
+      this.facing = -charFacing;
+      this.pos.x = this.target.x;
+      this.pos.y = this.target.y;
     } else if (this.state === 'pet') {
       // Hovering affectionately right under 2B's outstretched right hand (which is on her -charFacing side)
       // leaning in and bobbing with her patting motion
