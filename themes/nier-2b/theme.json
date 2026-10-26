@@ -7,6 +7,7 @@
     "sprite": "assets/2b-full.png",
     "sitSprite": "assets/2b-sit.png",
     "peekSprite": "assets/2b-peek.png",
+    "ceilingSprite": "assets/2b-ceiling.png",
     "sleepSprite": "assets/2b-sleep.png",
     "weapon": "assets/katana.png",
     "portrait": "assets/portrait-2b.png",

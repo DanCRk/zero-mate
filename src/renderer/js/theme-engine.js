@@ -171,6 +171,7 @@ export class ThemeEngine {
     this.peekAlphaMap = images.peekImg ? this.buildAlphaMap(images.peekImg) : null;
     this.sleepAlphaMap = images.sleepImg ? this.buildAlphaMap(images.sleepImg) : null;
     this.spinAlphaMap = images.spinImg ? this.buildAlphaMap(images.spinImg) : null;
+    this.ceilingAlphaMap = images.ceilingImg ? this.buildAlphaMap(images.ceilingImg) : null;
     this.setScale(this.scale);
     this.bindInteractions();
     this.loop = this.loop.bind(this);
@@ -220,6 +221,9 @@ export class ThemeEngine {
   head(at = this.pos, facing = this.facing) {
     const s = this.scale;
     const bob = at === this.pos ? this.bob : 0;
+    if (this.stance === 'ceiling' || this.p.pose === 'ceiling') {
+      return { x: at.x, y: 340 * s, top: 310 * s };
+    }
     const dx = (SPRITE.head.x - SPRITE.feet.x) * s * facing;
     const dy = (SPRITE.feet.y - SPRITE.head.y) * s;
     return { x: at.x + dx, y: at.y - dy + bob, top: at.y - SPRITE.feet.y * s + bob };
@@ -247,6 +251,7 @@ export class ThemeEngine {
     const sx = SPRITE.feet.x + ((x - this.pos.x) / s) * this.facing;
     let sy = SPRITE.feet.y - (fy - y) / s;
     const useSitMap = Boolean(this.sitAlphaMap && (this.p.sit > 0.5 || this.p.pose === 'sit'));
+    const useCeilingMap = Boolean(this.ceilingAlphaMap && (this.stance === 'ceiling' || this.p.pose === 'ceiling'));
     const usePeekMap = Boolean(this.peekAlphaMap && (this.stance === 'peek' || this.p.pose === 'peek'));
     const useSleepMap = Boolean(this.sleepAlphaMap && (this.stance === 'sleep' || this.p.pose === 'sleep'));
     if (!useSitMap && !usePeekMap && !useSleepMap && this.p.sit > 0 && sy > SPRITE.hip) {
@@ -254,7 +259,7 @@ export class ThemeEngine {
       sy = sy <= SPRITE.hip + THIGH * c ? SPRITE.hip + (sy - SPRITE.hip) / c : sy + THIGH * (1 - c);
     }
     const useSpinMap = Boolean(this.spinAlphaMap && (this.p.pose === 'spin' || this.p.pose === 'wall_spin'));
-    const map = useSpinMap ? this.spinAlphaMap : (usePeekMap ? this.peekAlphaMap : (useSleepMap ? this.sleepAlphaMap : (useSitMap ? this.sitAlphaMap : this.alphaMap)));
+    const map = useSpinMap ? this.spinAlphaMap : (useCeilingMap ? this.ceilingAlphaMap : (usePeekMap ? this.peekAlphaMap : (useSleepMap ? this.sleepAlphaMap : (useSitMap ? this.sitAlphaMap : this.alphaMap))));
     for (const [dx, dy] of [[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4]]) {
       const px = Math.round(sx + dx), py = Math.round(sy + dy);
       if (px < 0 || py < 0 || px >= SPRITE.width || py >= SPRITE.height) continue;
@@ -727,13 +732,16 @@ export class ThemeEngine {
       this.weapon.setMode('hidden');
       this.pod.pos = { x: this.pos.x - 95, y: this.pos.y - 180 };
     } else {
+      // Ceiling Hang — Anclada firmemente al marco superior del monitor
       this.facing = Math.random() < 0.5 ? 1 : -1;
-      this.pos.x = clamp(rand(200, this.view.w - 200), 160, this.view.w - 160);
-      this.pos.y = 80 + (SPRITE.feet.y - SPRITE.hip) * s;
-      this.setStance('peek');
+      this.pos.x = clamp(rand(220, this.view.w - 220), 180, this.view.w - 180);
+      // Posición Y ajustada para que las botas rocen exactamente el borde superior (y = 0)
+      this.pos.y = Math.round((SPRITE.pad + SPRITE.feet.y) * s) - Math.round(18 * s);
+      this.setStance('ceiling');
+      this.p.pose = 'ceiling';
       this.weapon.setMode('hidden');
       this.pod.state = 'carry';
-      this.pod.pos = { x: this.pos.x, y: 35 };
+      this.pod.pos = { x: this.pos.x + (this.facing * 35), y: 38 };
     }
 
     if (opts.announce !== false) {
@@ -751,12 +759,16 @@ export class ThemeEngine {
   async unpeek(opts = {}) {
     if (this.stance !== 'peek') return;
     if (this.peekSide === 'top') {
+      this.busy = true;
       this.mode = 'idle';
       this.peekSide = null;
+      this.sound.play('cloth-rustle', { gain: 0.7 });
+      this.setStance('stand');
+      this.p.pose = 'stand';
       this.pod.state = 'follow';
       this.weapon.setMode('back');
-      this.sound.play('footstep-metal');
-      this.fall();
+      this.fall(); // Cae con gravedad suavemente al suelo o a una ventana
+      this.busy = false;
       return;
     }
     this.busy = true;

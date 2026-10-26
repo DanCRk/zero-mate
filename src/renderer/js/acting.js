@@ -91,6 +91,16 @@ export const ACTS = {
     ],
   },
 
+  // Ceiling Hang stance with dedicated 2b-ceiling sprite (hanging upside down)
+  ceiling: {
+    loop: true,
+    keys: [
+      [10, { pose: 'ceiling', head: 0, bob: 0 }],
+      [8,  { pose: 'ceiling', head: 0.04, bob: -1 }],
+      [10, { pose: 'ceiling', head: -0.02, bob: 0 }],
+    ],
+  },
+
   // Peeking from screen edge with dedicated 2b-peek sprite
   peek: {
     loop: true,

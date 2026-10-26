@@ -25,6 +25,7 @@ const RAW_SOURCES = {
   'cutin-eyes.png': 'cutin_eyes_1792969158885.jpg',
   'portrait-2b.png': 'portrait_2b_1792969178796.jpg',
   'portrait-pod.png': 'pod_042_anime_accurate_1792974981439.jpg',
+  '2b-ceiling.png': '2b_ceiling_hang_1792987247479.jpg',
 };
 
 const PS_SCRIPT = `
@@ -207,6 +208,7 @@ function Process-Direct([string]$inFile, [string]$outFile, [int]$w, [int]$h) {
 
 Process-Cutout (Join-Path $RawDir "2b-full.png") (Join-Path $OutDir "2b-full.png") 260 440 8 4 $false
 Process-Cutout (Join-Path $RawDir "2b-sit.png")  (Join-Path $OutDir "2b-sit.png")  260 440 8 32 $false
+Process-Cutout (Join-Path $RawDir "2b-ceiling.png") (Join-Path $OutDir "2b-ceiling.png") 260 440 0 16 $false
 Process-Cutout (Join-Path $RawDir "pod-042.png") (Join-Path $OutDir "pod-042.png") 140 160 6 6 $true
 Process-Cutout (Join-Path $RawDir "katana.png")  (Join-Path $OutDir "katana.png")  340 96 6 6 $true
 
