@@ -42,6 +42,7 @@ uniform float uSplit;
 uniform float uCollapse;
 uniform float uDissolve;
 uniform float uBunker;
+uniform float uDirectTex;
 uniform vec4 uSil;
 uniform vec2 uMisreg;
 uniform vec3 uRim;
@@ -191,6 +192,7 @@ vec4 torso(vec2 q) {
 }
 
 vec4 rig(vec2 q) {
+  if (uDirectTex > 0.5) return cel(q);
   if (uSitTex > 0.5 && uArmL == 0.0 && uArmR == 0.0) {
     return torso(bend(q));
   }
@@ -207,6 +209,7 @@ vec4 rig(vec2 q) {
 
 // Rig-aware silhouette alpha sample so motion smears/echoes always match 2B's exact animated pose
 float fastAlpha(vec2 q) {
+  if (uDirectTex > 0.5) return cel(q).a;
   return rig(q).a;
 }
 
@@ -274,7 +277,7 @@ const UNIFORMS = [
   'uView', 'uPad', 'uTex', 'uSize', 'uSeed', 'uBoil', 'uHair', 'uSkirt', 'uHead',
   'uArmL', 'uArmR', 'uLongL', 'uLongR', 'uSit', 'uSitTex', 'uKickL', 'uKickR',
   'uSmear', 'uEcho', 'uGlitch', 'uGlitchSeed', 'uSplit', 'uCollapse', 'uDissolve',
-  'uBunker', 'uSil', 'uMisreg', 'uRim', 'uAlpha',
+  'uBunker', 'uDirectTex', 'uSil', 'uMisreg', 'uRim', 'uAlpha',
 ];
 
 export const SPRITE = {
@@ -390,10 +393,13 @@ export class SpriteRenderer {
     const { gl, u } = this;
     let targetTex = this.tex;
     let isSit = false;
+    let isDirect = false;
     if ((s.pose === 'spin' || s.pose === 'wall_spin') && this.spinTex) {
       targetTex = this.spinTex;
+      isDirect = true;
     } else if (s.pose === 'peek' && this.peekTex) {
       targetTex = this.peekTex;
+      isDirect = true;
     } else if (s.pose === 'sleep' && this.sleepTex) {
       targetTex = this.sleepTex;
       isSit = true;
@@ -425,6 +431,7 @@ export class SpriteRenderer {
     gl.uniform1f(u.uCollapse, s.collapse);
     gl.uniform1f(u.uDissolve, s.dissolve);
     gl.uniform1f(u.uBunker, s.bunker || 0);
+    gl.uniform1f(u.uDirectTex, isDirect ? 1.0 : 0.0);
     gl.uniform4f(u.uSil, s.sil[0], s.sil[1], s.sil[2], s.silAmount);
     gl.uniform2f(u.uMisreg, s.misreg[0], s.misreg[1]);
     gl.uniform3f(u.uRim, 0.85, 0.82, 0.72);
