@@ -20,7 +20,7 @@ const { spawn } = require('node:child_process');
 const ROOT = path.resolve(__dirname, '..', '..');
 
 const PROVIDERS = [
-  { id: 'agy', label: 'Antigravity CLI (Headless · 0 Consola)', type: 'cli', defaultModel: 'agy-default' },
+  { id: 'agy', label: 'Antigravity CLI (Headless · 0 Consola)', type: 'cli', defaultModel: 'gemini-3.8-flash-low' },
   { id: 'claude-cli', label: 'Claude Code CLI (Headless · 0 Consola)', type: 'cli', defaultModel: 'claude-code' },
   { id: 'ollama', label: 'Ollama Local (127.0.0.1:11434)', type: 'local', defaultModel: 'llama3.2' },
   { id: 'gemini', label: 'Google Gemini API', type: 'api', defaultModel: 'gemini-2.5-flash' },
@@ -446,7 +446,7 @@ function spawnHeadlessCli(binPath, args, inputText, timeoutMs = 26000) {
   });
 }
 
-async function askHeadlessCli(providerId, sysPrompt, userPrompt) {
+async function askHeadlessCli(providerId, sysPrompt, userPrompt, model = '') {
   const binName = providerId === 'agy' ? 'agy' : (providerId === 'claude-cli' ? 'claude' : providerId);
   const binPath = resolveCliBinary(binName);
 
@@ -460,6 +460,12 @@ async function askHeadlessCli(providerId, sysPrompt, userPrompt) {
   const combined = `[CONTEXT: ${sysCompact}] [OPERATOR DIRECTIVE: ${String(userPrompt).trim()}] [RULE: Respond as 2B or Pod 042 in 1 concise sentence. If the operator directive requires an action or tool on PC, append [TOOL:name {"param":"value"}].] Reply:`;
 
   const args = ['-p', combined];
+  if (providerId === 'agy') {
+    const chosenModel = model || 'gemini-3.8-flash-low';
+    args.push('--model', chosenModel, '--effort', 'low');
+  } else if (providerId === 'claude-cli' && model) {
+    args.push('--model', model);
+  }
   return spawnHeadlessCli(binPath, args, '');
 }
 
@@ -766,7 +772,7 @@ class BrainRouter {
       switch (provider) {
         case 'agy':
         case 'claude-cli':
-          raw = await askHeadlessCli(provider, sysPrompt, prompt);
+          raw = await askHeadlessCli(provider, sysPrompt, prompt, model);
           break;
         case 'gemini':
           raw = await askGemini(keys.gemini || process.env.GEMINI_API_KEY, model, sysPrompt, prompt);
@@ -781,7 +787,7 @@ class BrainRouter {
           raw = await askOllama(cfg.ollamaUrl || 'http://127.0.0.1:11434', model, sysPrompt, prompt);
           break;
         default:
-          raw = await askHeadlessCli('agy', sysPrompt, prompt);
+          raw = await askHeadlessCli('agy', sysPrompt, prompt, model);
           break;
       }
 
