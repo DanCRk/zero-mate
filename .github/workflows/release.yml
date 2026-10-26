@@ -64,7 +64,7 @@ jobs:
             $content = Get-Content -Raw -Path "docs/releases/v0.3.1-alpha.1.md"
           }
           if ($steps.checksum.outputs.INSTALLER_HASH) {
-            $content = $content.Replace("ZeroMate-Setup-0.3.1-alpha.1.exe (~115 MB)", "$($steps.checksum.outputs.INSTALLER_NAME)`nsha256:$($steps.checksum.outputs.INSTALLER_HASH)`n$($steps.checksum.outputs.INSTALLER_SIZE)")
+            $content = $content -replace "ZeroMate-Setup-.*?\.exe \(~115 MB\)", "$($steps.checksum.outputs.INSTALLER_NAME)`nsha256:$($steps.checksum.outputs.INSTALLER_HASH)`n$($steps.checksum.outputs.INSTALLER_SIZE)"
           }
           Set-Content -Path release_body.md -Value $content
 
