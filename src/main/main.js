@@ -37,7 +37,7 @@ const brainRouter = new BrainRouter({ getConfig: () => config.load(), toolEngine
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const DEV = process.argv.includes('--dev');
-const PORT = Number(process.env.ZEROMATE_PORT || process.env.YORHA_PORT) || 47823;
+const PORT = Number(process.env.ZEROMATE_PORT || process.env.YORHA_PORT) || 47824;
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'zeromate', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },

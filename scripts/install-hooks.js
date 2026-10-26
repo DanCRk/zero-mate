@@ -3,6 +3,7 @@
 
 // ZeroMate — Claude Code Hook Installer / Uninstaller
 // Configures ~/.claude/settings.json to forward events to hooks/zeromate-claude-hook.js.
+// Keeps existing hooks (including Capri) intact.
 
 const fs = require('node:fs');
 const os = require('node:os');
@@ -19,7 +20,6 @@ const EVENTS = [
   'PreToolUse',
   'PostToolUse',
   'PostToolUseFailure',
-  'PermissionRequest',
   'Notification',
   'Stop',
   'SubagentStart',
@@ -29,19 +29,27 @@ const EVENTS = [
 ];
 
 function settingsPath() {
-  return path.join(os.homedir(), '.claude', 'settings.json');
+  const base = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
+  return path.join(base, 'settings.json');
 }
 
 function readSettings(file) {
+  if (!fs.existsSync(file)) return {};
+  const text = fs.readFileSync(file, 'utf8').trim();
+  if (!text) return {};
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return {};
+    return JSON.parse(text);
+  } catch (err) {
+    throw new Error(`${file} is not valid JSON (${err.message}). Fix it first, nothing was changed.`);
   }
 }
 
 function writeSettings(file, data) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
+  if (fs.existsSync(file)) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    fs.copyFileSync(file, `${file}.zeromate-backup-${stamp}`);
+  }
   fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n', 'utf8');
 }
 
@@ -56,16 +64,19 @@ function isOurs(entry) {
 
 function install(file = settingsPath()) {
   const settings = readSettings(file);
+  const before = JSON.stringify(settings);
   settings.hooks = settings.hooks && typeof settings.hooks === 'object' ? settings.hooks : {};
 
   for (const event of EVENTS) {
     const list = Array.isArray(settings.hooks[event]) ? settings.hooks[event] : [];
     const filtered = list.filter((e) => !isOurs(e));
-    filtered.push({ hooks: [{ type: 'command', command: COMMAND }] });
+    filtered.push({ hooks: [{ type: 'command', command: COMMAND, async: true, timeout: 10 }] });
     settings.hooks[event] = filtered;
   }
 
-  writeSettings(file, settings);
+  if (JSON.stringify(settings) !== before) {
+    writeSettings(file, settings);
+  }
   return file;
 }
 
@@ -74,20 +85,31 @@ function uninstall(file = settingsPath()) {
   const settings = readSettings(file);
   if (!settings.hooks || typeof settings.hooks !== 'object') return file;
 
+  const before = JSON.stringify(settings);
   for (const event of Object.keys(settings.hooks)) {
     if (!Array.isArray(settings.hooks[event])) continue;
     settings.hooks[event] = settings.hooks[event].filter((e) => !isOurs(e));
     if (settings.hooks[event].length === 0) delete settings.hooks[event];
   }
-  writeSettings(file, settings);
+  if (Object.keys(settings.hooks).length === 0) {
+    delete settings.hooks;
+  }
+
+  if (JSON.stringify(settings) !== before) {
+    writeSettings(file, settings);
+  }
   return file;
 }
 
 function status(file = settingsPath()) {
   if (!fs.existsSync(file)) return false;
-  const settings = readSettings(file);
-  if (!settings.hooks) return false;
-  return EVENTS.some((ev) => (settings.hooks[ev] || []).some(isOurs));
+  try {
+    const settings = readSettings(file);
+    if (!settings.hooks) return false;
+    return EVENTS.some((ev) => (settings.hooks[ev] || []).some(isOurs));
+  } catch {
+    return false;
+  }
 }
 
 if (require.main === module) {
@@ -96,4 +118,4 @@ if (require.main === module) {
   console.log(`[zeromate-hooks-claude] ${remove ? 'desinstalado de' : 'instalado en'} ${file}`);
 }
 
-module.exports = { install, uninstall, status, settingsPath };
+module.exports = { install, uninstall, status, settingsPath, EVENTS };

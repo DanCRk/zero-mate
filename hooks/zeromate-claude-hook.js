@@ -2,11 +2,11 @@
 'use strict';
 
 // ZeroMate — Claude Code Passive Hook Forwarder
-// Reads Claude Code hook JSON from stdin and posts to http://127.0.0.1:47823/event (fallback 47824).
+// Reads Claude Code hook JSON from stdin and posts to http://127.0.0.1:47824/event (fallback 47823).
 
 const http = require('node:http');
 
-const PRIMARY_PORT = Number(process.env.ZEROMATE_PORT || process.env.YORHA_PORT) || 47823;
+const PRIMARY_PORT = Number(process.env.ZEROMATE_PORT || process.env.YORHA_PORT) || 47824;
 
 const chunks = [];
 process.stdin.on('data', (c) => chunks.push(c));
@@ -46,7 +46,7 @@ process.stdin.on('end', () => {
 
   sendToPort(PRIMARY_PORT, (ok) => {
     if (ok) return process.exit(0);
-    sendToPort(PRIMARY_PORT + 1, () => process.exit(0));
+    sendToPort(47823, () => process.exit(0));
   });
 });
 
