@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('host', {
   getTheme: () => ipcRenderer.invoke('theme:get'),
   listThemes: () => ipcRenderer.invoke('theme:list'),
   transcribePcm16k: (floatArray) => ipcRenderer.invoke('stt:transcribe', floatArray),
+  transcribeAudio: (floatArray) => ipcRenderer.invoke('stt:transcribe', floatArray),
   askBrain: (prompt, opts) => ipcRenderer.invoke('brain:ask', prompt, opts),
   listBrains: () => ipcRenderer.invoke('brain:providers'),
   onRequestPermission: on('tool:request-permission'),

@@ -335,7 +335,7 @@ function registerIpc() {
   ipcMain.handle('theme:list', () => listThemes());
   ipcMain.handle('stt:transcribe', async (_e, pcm16k) => {
     const lang = config.load().lang === 'en' ? 'en' : 'es';
-    return transcribePcm16k(pcm16k, { lang });
+    return transcribePcm16k(pcm16k, lang);
   });
   ipcMain.handle('brain:ask', async (_e, prompt, opts = {}) => brainRouter.ask(prompt, opts));
   ipcMain.handle('brain:providers', () => brainRouter.listProviders());

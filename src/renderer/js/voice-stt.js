@@ -106,7 +106,8 @@ export class VoicePTT {
 
     // Resample to 16000 Hz mono for Whisper ONNX
     const pcm16k = await this.resampleTo16k(merged, this.sampleRate);
-    const res = await this.host.transcribeAudio(Array.from(pcm16k));
+    const transcribeFn = this.host.transcribeAudio || this.host.transcribePcm16k;
+    const res = await transcribeFn?.call(this.host, Array.from(pcm16k));
     this.chatBar.setRecording(false);
 
     if (res?.ok && res.text) {
