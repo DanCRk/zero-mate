@@ -1,6 +1,6 @@
 'use strict';
 
-// Local HTTP bridge on 127.0.0.1:47823 for Antigravity / Claude Code hooks and --dev automation.
+// Local HTTP bridge on 127.0.0.1:47824 for Antigravity / Claude Code hooks and --dev automation.
 
 const http = require('node:http');
 
