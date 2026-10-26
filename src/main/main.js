@@ -166,6 +166,7 @@ function rebuildTray() {
     { label: `ZeroMate [${themeName}] — ${isEs ? 'Puerto' : 'Port'} ${PORT}`, enabled: false },
     { type: 'separator' },
     { label: isEs ? `Estado Táctico (${compName})` : `Tactical Status (${compName})`, click: () => sendCommand('status') },
+    { label: isEs ? 'Configuración del Sistema...' : 'System Settings & Live Tuner...', accelerator: 'Ctrl+Alt+S', click: () => sendCommand('settings:toggle') },
     { label: isEs ? `Abrir Barra de Chat (${themeName})` : `Open Chat HUD (${themeName})`, accelerator: 'Alt+Space', click: () => sendCommand('chat:toggle') },
     { label: isEs ? 'Voz Local Push-to-Talk (Whisper STT)' : 'Local Push-to-Talk Voice (Whisper STT)', accelerator: 'Ctrl+Space', click: () => sendCommand('ptt:toggle') },
     { label: isEs ? `Planear con ${compName} (Slot: traverse)` : `Glide with ${compName} (Slot: traverse)`, click: () => sendCommand('slot', { slot: 'traverse' }) },
@@ -426,6 +427,7 @@ function main() {
       onDebug: DEV ? debugHandler : null,
     });
     globalShortcut.register('Control+Alt+C', () => toggleVisible());
+    globalShortcut.register('Control+Alt+S', () => sendCommand('settings:toggle'));
     globalShortcut.register('Alt+Space', () => sendCommand('chat:toggle'));
     globalShortcut.register('Control+Space', () => sendCommand('ptt:toggle'));
     screen.on('display-metrics-changed', fitOverlay);

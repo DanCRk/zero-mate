@@ -14,6 +14,7 @@ const DEFAULTS = {
   wander: true,         // autonomous window walking & Pod glide
   proactiveMinutes: 25, // default 25m proactive initiative (0 = disabled)
   visible: true,        // false = 2B stowed in Bunker, only Pod 042 floating in corner
+  idleQuirkIntervalSec: 45, // frequency of autonomous idle quirk animations (seconds)
   brainProvider: 'agy', // 'agy' | 'claude-cli' | 'ollama' | 'gemini' | 'openai' | 'claude-api'
   brainModel: '',       // optional override model name
   ollamaUrl: 'http://127.0.0.1:11434',

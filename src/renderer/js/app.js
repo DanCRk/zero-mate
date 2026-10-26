@@ -10,6 +10,7 @@ import { ChatBar } from './chat-bar.js';
 import { ProactiveScheduler } from './proactive.js';
 import { VoicePTT } from './voice-stt.js';
 import { SoundBank } from './sound-bank.js';
+import { SettingsModal } from './settings-modal.js';
 import { pick } from './util.js';
 
 const host = window.host;
@@ -148,6 +149,7 @@ async function boot() {
   });
 
   let voicePtt = null;
+  let settingsModal = null;
 
   const chatBar = new ChatBar({
     el: document.getElementById('chat-bar'),
@@ -156,6 +158,10 @@ async function boot() {
     onSubmit: handleUserCommand,
     onMicToggle: () => voicePtt?.toggle(),
     onOpenSettings: openBrainModal,
+    onOpenSystemSettings: () => {
+      settingsModal?.toggle();
+      refreshHit();
+    },
   });
 
   voicePtt = new VoicePTT({
@@ -189,10 +195,20 @@ async function boot() {
   });
   proactive.configure(config.proactiveMinutes ?? 25);
 
+  settingsModal = new SettingsModal({
+    el: document.getElementById('yorha-settings'),
+    host,
+    soundBank,
+    engine,
+    proactive,
+    openBrainModal,
+  });
+  settingsModal.syncState(config);
+
   panel.onChar = () => soundBank.play('talk-blip', { gain: 0.45 });
   panel.onTalk = (talking) => talking && engine.perform('talk');
 
-  // Pixel-accurate Click-Through hit-testing over 2B, Pod 042, YoRHa Panel, and Chat Bar
+  // Pixel-accurate Click-Through hit-testing over 2B, Pod 042, YoRHa Panel, Chat Bar, and Settings Modal
   let interactive = false;
   let mouse = null;
   const setInteractive = (on) => {
@@ -202,7 +218,7 @@ async function boot() {
   };
 
   const refreshHit = () => {
-    if (engine.dragging || chatBar.visible || !brainModal.hidden) return setInteractive(true);
+    if (engine.dragging || chatBar.visible || !brainModal.hidden || settingsModal?.visible) return setInteractive(true);
     if (!mouse) return setInteractive(false);
     const r = panel.rect();
     const onPanel = r && mouse.x >= r.left && mouse.x <= r.right && mouse.y >= r.top && mouse.y <= r.bottom;
@@ -210,10 +226,12 @@ async function boot() {
     const onChat = c && mouse.x >= c.left && mouse.x <= c.right && mouse.y >= c.top && mouse.y <= c.bottom;
     const b = !brainModal.hidden ? brainModal.getBoundingClientRect() : null;
     const onBrain = b && mouse.x >= b.left && mouse.x <= b.right && mouse.y >= b.top && mouse.y <= b.bottom;
+    const s = settingsModal?.rect();
+    const onSettings = s && mouse.x >= s.left && mouse.x <= s.right && mouse.y >= s.top && mouse.y <= s.bottom;
     const onPod = engine.hitPod(mouse.x, mouse.y);
     const onChar = engine.hitCharacter(mouse.x, mouse.y);
     document.body.style.cursor = (onPod || onChar) ? 'pointer' : '';
-    return setInteractive(Boolean(onPanel || onChat || onBrain || onPod || onChar));
+    return setInteractive(Boolean(onPanel || onChat || onBrain || onSettings || onPod || onChar));
   };
 
   window.addEventListener('mousemove', (e) => {
@@ -248,11 +266,38 @@ async function boot() {
     engine.wander = cfg.wander;
     if (cfg.scale !== engine.scale) engine.setScale(cfg.scale);
     if (cfg.proactiveMinutes !== undefined) proactive.configure(cfg.proactiveMinutes);
+    if (cfg.idleQuirkIntervalSec !== undefined) engine.idleQuirkIntervalSec = cfg.idleQuirkIntervalSec;
+    settingsModal?.syncState(cfg);
+  });
+
+  // Local keyboard shortcuts (F2 / Ctrl+Alt+S / Escape)
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'F2' || (e.ctrlKey && e.altKey && (e.key === 's' || e.key === 'S'))) {
+      e.preventDefault();
+      settingsModal?.toggle();
+      refreshHit();
+    } else if (e.key === 'Escape' && settingsModal?.visible) {
+      e.preventDefault();
+      settingsModal?.close();
+      refreshHit();
+    }
   });
 
   // Command & Semantic Slot listener
   host.onCommand(async (cmd) => {
     switch (cmd.name) {
+      case 'settings:toggle':
+        settingsModal?.toggle();
+        refreshHit();
+        break;
+      case 'settings:open':
+        settingsModal?.open();
+        refreshHit();
+        break;
+      case 'settings:close':
+        settingsModal?.close();
+        refreshHit();
+        break;
       case 'status':
         soundBank.play('ui-open');
         engine.statusReport();

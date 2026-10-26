@@ -126,6 +126,7 @@ export class ThemeEngine {
     this.onPodClick = null;
     this.onChatAnchor = null;
 
+    this.idleQuirkIntervalSec = 45;
     const now = performance.now();
     this.nextWander = now + rand(18000, 32000);
     this.nextQuirk = now + rand(12000, 24000);
@@ -806,7 +807,8 @@ export class ThemeEngine {
     if (this.busy || this.dragging || this.stowed) return;
 
     if (now > this.nextQuirk) {
-      this.nextQuirk = now + rand(22000, 42000);
+      const base = (this.idleQuirkIntervalSec || 45) * 1000;
+      this.nextQuirk = now + rand(base * 0.75, base * 1.25);
       this.slotIdleQuirk();
       return;
     }
@@ -820,6 +822,41 @@ export class ThemeEngine {
         this.slotTraverse();
       }
     }
+  }
+
+  forceStance(stance) {
+    if (stance === 'auto') {
+      this.busy = false;
+      this.setStance('stand');
+      this.pod.state = 'follow';
+      this.weapon.setMode('back');
+      this.drawFrame();
+      return;
+    }
+    this.busy = false;
+    this.setStance(stance);
+    if (stance === 'sit') {
+      this.p.sit = 1;
+      this.weapon.setMode('back');
+      this.perform('plop');
+    } else if (stance === 'walk') {
+      this.p.sit = 0;
+      this.weapon.setMode('back');
+      this.perform('walk');
+    } else if (stance === 'glide') {
+      this.p.sit = 0;
+      this.pod.state = 'carry';
+      this.weapon.setMode('hidden');
+    } else if (stance === 'work') {
+      this.p.sit = 0;
+      this.pod.state = 'follow';
+      this.weapon.setMode('back');
+    } else {
+      this.p.sit = 0;
+      this.pod.state = 'follow';
+      this.weapon.setMode('back');
+    }
+    this.drawFrame();
   }
 
   // ---------- Pointer & Interactive Hotspots (2B + Pod 042) ----------
