@@ -382,8 +382,10 @@ async function boot() {
   host.onHookEvent((evt) => {
     const type = evt.hook_event_name;
     const srcTag = evt.source === 'antigravity' ? 'AGY' : 'CLAUDE';
+    const allowHookAudio = Boolean(currentConfig.hookAudio);
+
     if (type === 'SessionStart') {
-      soundBank.play('pod-ack');
+      if (allowHookAudio) soundBank.play('pod-ack');
       panel.say({
         kind: 'info',
         speaker: 'pod',
@@ -391,15 +393,16 @@ async function boot() {
         hold: 3600,
       });
     } else if (type === 'UserPromptSubmit') {
-      soundBank.play('ui-click');
+      if (allowHookAudio) soundBank.play('ui-click');
       panel.tick(srcTag, 'Analizando directiva del operador...');
     } else if (type === 'PreToolUse' || type === 'SubagentStart') {
       engine.triggerSlot('tool_work', {
         tag: evt.tool_name || srcTag,
         line: `Reporte: Ejecutando herramienta táctica [${evt.tool_name || 'sistema'}].`,
+        silent: !allowHookAudio,
       });
     } else if (type === 'PostToolUseFailure') {
-      soundBank.play('alert');
+      if (allowHookAudio) soundBank.play('alert');
       panel.say({
         kind: 'error',
         speaker: '2b',
@@ -407,12 +410,13 @@ async function boot() {
         hold: 4500,
       });
     } else if (type === 'PermissionRequest') {
+      // Permission request requires human action: retains alert sound
       engine.triggerSlot('alert_confirm', {
         tool: evt.tool_name || 'PERMISO',
         command: evt.command || JSON.stringify(evt.tool_input || {}),
       });
     } else if (type === 'Notification' && evt.message) {
-      soundBank.play('pod-ack');
+      if (allowHookAudio) soundBank.play('pod-ack');
       panel.say({
         kind: 'info',
         speaker: 'pod',
@@ -420,7 +424,7 @@ async function boot() {
         hold: 4500,
       });
     } else if (type === 'Stop' || type === 'SessionEnd') {
-      engine.triggerSlot('victory');
+      engine.triggerSlot('victory', { silent: !allowHookAudio });
     }
   });
 

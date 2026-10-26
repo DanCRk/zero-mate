@@ -566,7 +566,7 @@ export class ThemeEngine {
     const prevStance = this.stance;
     const prevPerch = this.perch;
 
-    this.sound.play('pod-scan');
+    if (!opts.silent) this.sound.play('pod-scan');
     this.pod.state = 'scan';
 
     const fgWin = this.windows.wins.find((w) => w.id === this.windows.fg) || this.windows.wins[0] || {
@@ -631,15 +631,17 @@ export class ThemeEngine {
   async slotVictory(opts = {}) {
     if (this.stowed || this.busy) return;
     this.busy = true;
-    this.sound.play('katana-slash', { rate: 1.15, gain: 0.7 });
+    if (!opts.silent) this.sound.play('katana-slash', { rate: 1.15, gain: 0.7 });
     this.weapon.setMode('sheathe');
     const h = this.head();
     this.fx.ring(h.x, h.y + 40, { radius: 110, color: '#ffffff' });
     this.fx.burst(h.x, h.y + 40, { count: 24, power: 1.1, spread: 80 });
 
     await this.perform('victory_sheathe', this.facing);
-    this.sound.play('katana-sheathe');
-    this.sound.play('ui-confirm');
+    if (!opts.silent) {
+      this.sound.play('katana-sheathe');
+      this.sound.play('ui-confirm');
+    }
     this.weapon.setMode('back');
     this.fx.ring(h.x, h.y + 30, { radius: 85, color: '#d8b868' });
 
