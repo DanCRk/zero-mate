@@ -1,0 +1,82 @@
+name: Release Build & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare Assets & Launcher
+        run: |
+          npm run assets
+          npm run build:launcher
+
+      - name: Build Windows Installer (NSIS x64)
+        run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute SHA256 Checksum
+        id: checksum
+        shell: pwsh
+        run: |
+          $exe = Get-Item dist/ZeroMate-Setup-*.exe | Select-Object -First 1
+          if ($exe) {
+            $hash = (Get-FileHash -Path $exe.FullName -Algorithm SHA256).Hash.ToLower()
+            $sizeMb = [math]::Round($exe.Length / 1MB, 1)
+            Write-Host "Built installer: $($exe.Name) ($sizeMb MB)"
+            Write-Host "SHA256: $hash"
+            "INSTALLER_NAME=$($exe.Name)" >> $env:GITHUB_OUTPUT
+            "INSTALLER_HASH=$hash" >> $env:GITHUB_OUTPUT
+            "INSTALLER_SIZE=$sizeMb MB" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Prepare Release Notes
+        id: notes
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if (-not $tag) { $tag = "v0.3.1-alpha.1" }
+          $notesPath = "docs/releases/$tag.md"
+          if (Test-Path $notesPath) {
+            $content = Get-Content -Raw -Path $notesPath
+          } else {
+            $content = Get-Content -Raw -Path "docs/releases/v0.3.1-alpha.1.md"
+          }
+          if ($steps.checksum.outputs.INSTALLER_HASH) {
+            $content = $content.Replace("ZeroMate-Setup-0.3.1-alpha.1.exe (~115 MB)", "$($steps.checksum.outputs.INSTALLER_NAME)`nsha256:$($steps.checksum.outputs.INSTALLER_HASH)`n$($steps.checksum.outputs.INSTALLER_SIZE)")
+          }
+          Set-Content -Path release_body.md -Value $content
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_body.md
+          draft: false
+          prerelease: true
+          files: |
+            dist/ZeroMate-Setup-*.exe
+            ZeroMate.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
