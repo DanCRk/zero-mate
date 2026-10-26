@@ -78,24 +78,30 @@ async function boot() {
   engine.wander = config.wander;
   engine.setScale(config.scale);
 
+  let isAskingBrain = false;
   const handleUserCommand = async (text) => {
+    isAskingBrain = true;
     engine.triggerSlot('tool_work', {
       tag: 'ENLACE IA',
       line: `Reporte: Procesando transmisión — "${text}"`,
     });
-    const res = await host.askBrain(text);
-    if (!res) return;
-    if (res.slot && res.slot !== 'tool_work') {
-      engine.triggerSlot(res.slot);
+    try {
+      const res = await host.askBrain(text);
+      if (!res) return;
+      if (res.slot && res.slot !== 'tool_work') {
+        engine.triggerSlot(res.slot);
+      }
+      soundBank.play(res.speaker === 'pod' ? 'pod-ack' : 'ui-confirm');
+      panel.say({
+        kind: 'reply',
+        speaker: res.speaker || '2b',
+        tag: (res.provider || 'ZEROMATE').toUpperCase(),
+        line: res.line,
+        hold: 12000,
+      });
+    } finally {
+      setTimeout(() => { isAskingBrain = false; }, 4000);
     }
-    soundBank.play(res.speaker === 'pod' ? 'pod-ack' : 'ui-confirm');
-    panel.say({
-      kind: 'info',
-      speaker: res.speaker || '2b',
-      tag: (res.provider || 'ZEROMATE').toUpperCase(),
-      line: res.line,
-      hold: 7000,
-    });
   };
 
   // YoRHa Multi-Brain Config Modal wiring
@@ -440,7 +446,9 @@ async function boot() {
         hold: 4500,
       });
     } else if (type === 'Stop' || type === 'SessionEnd') {
-      engine.triggerSlot('victory', { silent: !allowHookAudio });
+      if (!isAskingBrain) {
+        engine.triggerSlot('victory', { silent: !allowHookAudio });
+      }
     }
   });
 

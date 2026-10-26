@@ -357,6 +357,7 @@ function spawnHeadlessCli(binPath, args, inputText, timeoutMs = 26000) {
       ...process.env,
       PATH: pathParts.join(path.delimiter),
       NO_COLOR: '1',
+      ZEROMATE_INTERNAL: '1',
     };
 
     const isCmdOrBat = isWin && (binPath.toLowerCase().endsWith('.cmd') || binPath.toLowerCase().endsWith('.bat'));

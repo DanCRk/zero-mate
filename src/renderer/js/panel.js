@@ -5,7 +5,7 @@
 import { clamp, reducedMotion } from './util.js';
 
 const NOISE = '■□❖▚▞01';
-const PRIORITY = { info: 1, idle: 1, work: 2, done: 3, error: 3, alert: 4 };
+const PRIORITY = { info: 1, idle: 1, work: 2, done: 3, error: 3, alert: 4, reply: 5 };
 const DECODE_STEP_MS = 24;
 
 export class Panel {

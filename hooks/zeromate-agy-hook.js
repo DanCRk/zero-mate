@@ -14,6 +14,18 @@ const PORT = Number(process.env.ZEROMATE_PORT || process.env.YORHA_PORT) || 4782
 const HOOK_TYPE = process.argv[2] || 'PreToolUse';
 const REPLY_MAX = 4000;
 
+// Ignore internal queries spawned by ZeroMate brain router to avoid recursion
+if (process.env.ZEROMATE_INTERNAL === '1') {
+  if (HOOK_TYPE === 'PreToolUse') {
+    process.stdout.write(JSON.stringify({ decision: 'allow' }) + '\n');
+  } else if (HOOK_TYPE === 'Stop') {
+    process.stdout.write(JSON.stringify({ decision: 'stop' }) + '\n');
+  } else {
+    process.stdout.write('{}\n');
+  }
+  process.exit(0);
+}
+
 function respondAndExit() {
   if (HOOK_TYPE === 'PreToolUse') {
     process.stdout.write(JSON.stringify({ decision: 'allow' }) + '\n');
