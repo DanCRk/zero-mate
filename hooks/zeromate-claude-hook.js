@@ -8,6 +8,10 @@ const http = require('node:http');
 
 const PRIMARY_PORT = Number(process.env.ZEROMATE_PORT || process.env.YORHA_PORT) || 47824;
 
+if (process.env.ZEROMATE_INTERNAL === '1') {
+  process.exit(0);
+}
+
 const chunks = [];
 process.stdin.on('data', (c) => chunks.push(c));
 process.stdin.on('end', () => {

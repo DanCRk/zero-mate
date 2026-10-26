@@ -701,13 +701,15 @@ export class ThemeEngine {
     await actPromise;
 
     // Phase 4: YoRHa Mission Complete Dialogue
-    const speaker = Math.random() < 0.35 ? 'pod' : '2b';
-    this.panel.say({
-      kind: 'done',
-      speaker,
-      line: opts.line || pick(NIER_DIALOGUES.victory),
-      hold: 4600,
-    });
+    if (!opts.silentLine && this.panel.current?.kind !== 'reply') {
+      const speaker = Math.random() < 0.35 ? 'pod' : '2b';
+      this.panel.say({
+        kind: 'done',
+        speaker,
+        line: opts.line || pick(NIER_DIALOGUES.victory),
+        hold: 4600,
+      });
+    }
     this.busy = false;
   }
 
