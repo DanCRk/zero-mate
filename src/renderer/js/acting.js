@@ -133,11 +133,11 @@ export const ACTS = {
     priority: 3,
     fps: 24,
     keys: [
-      [2, { pose: 'spin', bob: 4, tilt: -10, sx: 1.08, sy: 0.92, smear: [-8, -4] }],
-      [3, { pose: 'spin', bob: -18, tilt: 12, sx: 0.95, sy: 1.12, smear: [14, -18], echo: [8, 4] }],
-      [4, { pose: 'spin', bob: -32, tilt: 28, sx: 1.02, sy: 0.98, smear: [20, -12], echo: [14, 6] }],
-      [3, { pose: 'spin', bob: -20, tilt: 15, sx: 0.96, sy: 1.06, smear: [10, -6] }],
-      [2, { pose: 'spin', bob: -8, tilt: 4, sx: 1.0, sy: 1.0 }],
+      [2, { pose: 'spin', bob: 2, tilt: 0, sx: 1.04, sy: 0.96, smear: [-8, -4] }],
+      [3, { pose: 'spin', bob: -12, tilt: 0, sx: 0.98, sy: 1.04, smear: [14, -16], echo: [8, 4] }],
+      [4, { pose: 'spin', bob: -24, tilt: 0, sx: 1.02, sy: 0.98, smear: [18, -10], echo: [14, 6] }],
+      [3, { pose: 'spin', bob: -14, tilt: 0, sx: 0.98, sy: 1.02, smear: [10, -6] }],
+      [2, { pose: 'spin', bob: -4, tilt: 0, sx: 1.0, sy: 1.0 }],
     ],
   },
 

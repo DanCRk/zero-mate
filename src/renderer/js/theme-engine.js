@@ -711,14 +711,14 @@ export class ThemeEngine {
     const anchorOffset = Math.round(126 * s);
 
     if (side === 'left') {
-      this.facing = 1;
+      this.facing = -1;
       this.pos.x = anchorOffset;
       this.pos.y = this.floor;
       this.setStance('peek');
       this.weapon.setMode('hidden');
       this.pod.pos = { x: this.pos.x + 95, y: this.pos.y - 180 };
     } else if (side === 'right') {
-      this.facing = -1;
+      this.facing = 1;
       this.pos.x = Math.round(this.view.w - anchorOffset);
       this.pos.y = this.floor;
       this.setStance('peek');
@@ -766,6 +766,7 @@ export class ThemeEngine {
     this.weapon.setMode('back');
     const stepIn = side === 'left' ? 90 : -90;
     this.pos.x = clamp(this.pos.x + stepIn, 100, this.view.w - 100);
+    this.facing = side === 'left' ? -1 : 1;
     this.place();
     if (opts.shy) {
       this.panel.say({
@@ -852,7 +853,8 @@ export class ThemeEngine {
     this.sound.play('cloth-rustle', { gain: 0.7 });
     await tween(this.pos, { x: wallX, y: Math.max(180, startY - 90) }, 230, ease.out);
 
-    // Impacto y anclaje en el marco
+    // Impacto y anclaje en el marco (orientada hacia el interior del escritorio)
+    this.facing = side === 'left' ? -1 : 1;
     this.setStance('peek');
     this.weapon.setMode('hidden');
     this.sound.play('footstep-metal', { gain: 0.85 });
@@ -860,7 +862,7 @@ export class ThemeEngine {
     await sleep(220); // Pausa de compresión elástica preparatoria
 
     // FASE 2: Impulso explosivo y pirueta aérea con textura acrobática 2b-acrobat-spin
-    this.facing = side === 'left' ? -1 : 1; // Giro hacia el centro
+    this.facing = side === 'left' ? -1 : 1; // Despega orientada hacia el centro
     this.sound.play('katana-slash', { rate: 1.25, gain: 0.85 });
     this.fx.burst(wallX, this.pos.y - 60, { count: 24, power: 1.45, spread: 85 });
     this.fx.ring(wallX, this.pos.y - 60, { radius: 105, color: '#d8b868' });
@@ -876,6 +878,7 @@ export class ThemeEngine {
     this.fx.ring(this.pos.x, this.pos.y - 35, { radius: 70, color: '#ffffff' });
 
     // FASE 3: Enganche dinámico con Pod 042 y planeo suave a destino
+    this.endAct(true);
     this.pod.pos = { x: this.pos.x, y: this.pos.y - 45 };
     this.sound.play('pod-glide');
     this.sound.play('cloth-rustle', { gain: 0.7 });
@@ -885,6 +888,7 @@ export class ThemeEngine {
 
     const seat = this.pickSeat();
     const landTarget = seat ? this.seat(seat.win, seat.dx) : { x: clamp(this.view.w * 0.5 + rand(-150, 150), 140, this.view.w - 140), y: this.floor };
+    this.facing = landTarget.x < this.pos.x ? 1 : -1;
     const glideMid = {
       x: (this.pos.x + landTarget.x) * 0.5,
       y: Math.min(this.pos.y, landTarget.y) - 45,
@@ -897,6 +901,7 @@ export class ThemeEngine {
     this.pod.state = 'follow';
     this.weapon.setMode('back');
     if (seat) {
+      this.facing = seat.win.x > this.view.w * 0.5 ? -1 : 1;
       this.setStance('sit', { perch: { id: seat.win.id, dx: seat.dx } });
       this.sound.play('cloth-rustle');
       await this.perform('plop');
