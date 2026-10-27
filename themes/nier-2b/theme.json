@@ -142,9 +142,18 @@
         "cloth-rustle",
         "talk-blip"
       ]
+    },
+    "flight_retreat": {
+      "animation": "ho229_flight_unit_retreat",
+      "sounds": [
+        "weapon-hum",
+        "katana-sheathe",
+        "pod-glide",
+        "bunker-transport"
+      ]
     }
   },
-  "satellite": "assets/bunker-satellite.png",
+  "satellite": "assets/bunker.png",
   "sounds": {
     "ui-open": "sounds/ui-open.wav",
     "ui-confirm": "sounds/ui-confirm.wav",
@@ -162,5 +171,6 @@
     "talk-blip": "sounds/talk-blip.wav",
     "footstep-metal": "sounds/footstep-metal.wav",
     "cloth-rustle": "sounds/cloth-rustle.wav"
-  }
+  },
+  "bunker": "assets/bunker.png"
 }
