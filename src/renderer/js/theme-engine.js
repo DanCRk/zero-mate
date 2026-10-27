@@ -799,23 +799,26 @@ export class ThemeEngine {
     this.busy = false;
   }
 
-  // SLOT: flight_intro — 2B arrives in YoRHa Flight Unit Ho229 Type-B (Jet Mode -> Humanoid Mech Transformation -> Acrobatic Disembark)
+  // SLOT: flight_intro — 2B arrives in YoRHa Flight Unit Ho229 Type-B (Large Center-Screen Jet Tour -> Mech Transformation -> Glide to Destination -> Disembark & Stay)
   async slotFlightUnitIntro(opts = {}) {
     if (this.busy && !opts.force) return;
     this.busy = true;
     this.stowed = false;
     this.root.hidden = false;
 
+    const s = this.scale;
+    // Ensure targetX has comfortable margin from screen edges
+    this.pos.x = clamp(this.pos.x, 160, this.view.w - 160);
     const targetX = this.pos.x;
     const targetY = this.pos.y;
-    const s = this.scale;
 
     // Fallback to Bunker beam if Flight Unit sprites are not loaded
     if (!this.flightJetImg || !this.flightMechImg) {
       this.sound.play('ui-open');
       this.fx.bunkerBeam(targetX, targetY, { life: 520, width: 58 });
-      this.p.alpha = 1;
+      Object.assign(this.p, { bunker: 0, collapse: 0, dissolve: 0, glitch: 0, alpha: 1 });
       this.weapon.setMode('back');
+      this.drawFrame(performance.now());
       this.panel.say({
         kind: 'info',
         speaker: '2b',
@@ -826,19 +829,20 @@ export class ThemeEngine {
       return;
     }
 
-    // Hide standalone 2B and weapon halo while she pilots the Ho229 Flight Unit
-    this.p.alpha = 0;
+    // Hide standalone 2B and weapon halo while she pilots the Ho229 Flight Unit across the screen
+    Object.assign(this.p, { bunker: 0, collapse: 0, dissolve: 0, glitch: 0, alpha: 0 });
     this.weapon.setMode('hidden');
     if (this.pod) {
-      this.pod.pos.x = targetX - 90 * this.facing;
-      this.pod.pos.y = -120;
+      this.pod.state = 'follow';
+      this.pod.pos.x = this.view.w * 0.5 - 120;
+      this.pod.pos.y = -80;
     }
     this.drawFrame(performance.now());
 
-    // Phase 1: Supersonic Jet Dive audio
+    // Act 1: Supersonic Jet Entry & Mini-Tour audio
     if (!opts.silent) {
-      this.sound.play('pod-glide', { rate: 1.15, gain: 0.9 });
-      this.sound.play('bunker-transport', { rate: 1.25, gain: 0.65 });
+      this.sound.play('pod-glide', { rate: 1.08, gain: 0.92 });
+      this.sound.play('bunker-transport', { rate: 1.18, gain: 0.7 });
     }
 
     let disembarkPromise = null;
@@ -847,53 +851,45 @@ export class ThemeEngine {
       jetImg: this.flightJetImg,
       mechImg: this.flightMechImg,
       scale: s,
-      life: 2700,
+      life: 4100,
       onTransform: () => {
-        // Phase 2: Mechanical chassis transformation (Jet -> Humanoid Maneuver Mode)
+        // Act 2: Center-screen mechanical chassis transformation (Jet -> Giant Humanoid Mech)
         if (!opts.silent) {
-          this.sound.play('weapon-hum', { rate: 1.05, gain: 0.95 });
-          this.sound.play('katana-slash', { rate: 0.88, gain: 0.8 });
+          this.sound.play('weapon-hum', { rate: 1.02, gain: 0.95 });
+          this.sound.play('katana-slash', { rate: 0.88, gain: 0.85 });
         }
       },
       onDisembark: ({ x, y }) => {
-        // Phase 3: Cockpit opens, 2B leaps out and drops onto targetY
+        // Act 4: Mech armor dissolves in place at destination, 2B steps down onto targetY and stays
         disembarkPromise = (async () => {
           if (!opts.silent) {
+            this.sound.play('bunker-transport', { rate: 1.3, gain: 0.65 });
             this.sound.play('cloth-rustle', { gain: 0.85 });
           }
-          const startX = x;
-          const startY = Math.min(targetY - 120 * s, y + 40 * s);
-          this.pos.x = startX;
+          const startY = Math.min(targetY - 45 * s, y);
+          this.pos.x = targetX;
           this.pos.y = startY;
-          this.p.alpha = 1;
-          this.p.bunker = 0;
-          this.p.collapse = 0;
-          this.p.dissolve = 0;
-          this.p.glitch = 0;
+          this.stowed = false;
+          this.root.hidden = false;
+          Object.assign(this.p, { bunker: 0, collapse: 0, dissolve: 0, glitch: 0, alpha: 1, pose: 'stand' });
 
           if (this.pod) {
             this.pod.state = 'follow';
           }
 
-          // Acrobatic somersault exit from cockpit followed by gravity drop to (targetX, targetY)
-          const dropDuration = 440;
+          const dropDuration = 340;
           const t0 = performance.now();
           await new Promise((resolve) => {
             const step = (now) => {
               const p = Math.min(1, (now - t0) / dropDuration);
-              const easeInQuad = p * p;
-              this.pos.x = lerp(startX, targetX, p);
-              this.pos.y = lerp(startY, targetY, easeInQuad);
-              if (p < 0.48 && this.sprite.spinImg) {
-                this.p.pose = 'spin';
-                this.tilt = p * Math.PI * 2 * this.facing;
-              } else {
-                this.p.pose = 'stand';
-                this.tilt = 0;
-                this.p.skirt = 1.05 * (1 - p);
-                this.p.hair = 0.85 * (1 - p);
-              }
+              const easeOut = 1 - Math.pow(1 - p, 2);
+              this.pos.x = targetX;
+              this.pos.y = lerp(startY, targetY, easeOut);
+              this.p.alpha = 1;
+              this.p.skirt = 0.85 * (1 - p);
+              this.p.hair = 0.7 * (1 - p);
               this.place();
+              this.drawFrame(now);
               if (p < 1) {
                 requestAnimationFrame(step);
               } else {
@@ -903,33 +899,39 @@ export class ThemeEngine {
             requestAnimationFrame(step);
           });
 
-          // Phase 4: Hero Landing Impact & Weapon Halo Lock
+          // Hero Landing Impact & Weapon Halo Lock
           this.pos.x = targetX;
           this.pos.y = targetY;
-          this.p.pose = 'stand';
+          this.stowed = false;
+          this.root.hidden = false;
+          Object.assign(this.p, { bunker: 0, collapse: 0, dissolve: 0, glitch: 0, alpha: 1, pose: 'stand' });
           this.tilt = 0;
           if (!opts.silent) {
             this.sound.play('footstep-metal', { gain: 0.95 });
-            this.sound.play('katana-sheathe', { gain: 0.85 });
+            this.sound.play('katana-sheathe', { gain: 0.9 });
           }
-          this.fx.burst(targetX, targetY - 14, { count: 22, power: 1.0, spread: 68 });
-          this.fx.ring(targetX, targetY - 8, { radius: 85, color: '#d8b868' });
-          this.fx.ring(targetX, targetY - 8, { radius: 125, color: '#dad4bb' });
+          this.fx.burst(targetX, targetY - 14, { count: 24, power: 1.05, spread: 72 });
+          this.fx.ring(targetX, targetY - 8, { radius: 90, color: '#d8b868' });
+          this.fx.ring(targetX, targetY - 8, { radius: 135, color: '#dad4bb' });
           this.weapon.setMode('sheathe');
           await this.perform('land');
           this.weapon.setMode('back');
+          this.drawFrame(performance.now());
         })();
       },
     });
 
     if (disembarkPromise) {
       await disembarkPromise;
-    } else {
-      this.pos.x = targetX;
-      this.pos.y = targetY;
-      this.p.alpha = 1;
-      this.weapon.setMode('back');
     }
+
+    // Guarantee 2B remains active and visible on desktop after intro completes
+    this.stowed = false;
+    this.root.hidden = false;
+    Object.assign(this.p, { bunker: 0, collapse: 0, dissolve: 0, glitch: 0, alpha: 1 });
+    this.weapon.setMode('back');
+    this.setStance('stand');
+    this.drawFrame(performance.now());
 
     if (!opts.silentLine) {
       this.panel.say({

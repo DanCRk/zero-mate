@@ -908,206 +908,210 @@ export class FxLayer {
         const viewH = this.canvas.height / dpr;
         const s = it.scale || 0.62;
 
-        // Clamp hover position so the wide Ho229 wings and weapons are 100% visible on screen
-        const hoverX = clamp(it.targetX, 240 * s, viewW - 240 * s);
-        const hoverY = clamp(it.targetY - 230 * s, 195 * s, viewH - 220 * s);
+        // Grand center-screen coordinates for the large showcase & transformation
+        const centerX = viewW * 0.5;
+        const centerY = viewH * 0.43;
 
-        // Determine approach direction so the jet dives across the open screen
-        const fromLeft = hoverX > viewW * 0.5;
-        const startX = fromLeft ? Math.max(-140, hoverX - 540) : Math.min(viewW + 140, hoverX + 540);
-        const startY = -150;
+        // Large showcase dimensions in the middle of the screen
+        const bigJetW = Math.min(680, viewW * 0.54);
+        const bigJetH = bigJetW * (320 / 520);
+        const bigMechW = Math.min(620, viewH * 0.66);
+        const bigMechH = bigMechW;
 
-        const jetW = 430 * s;
-        const jetH = 265 * s;
-        const mechW = 430 * s;
-        const mechH = 430 * s;
+        // Final landing Mech size aligned with 2B's standing scale at (targetX, targetY)
+        const endMechW = 450 * (s / 0.62);
+        const endMechH = endMechW;
+        const endMechX = clamp(it.targetX, 180, viewW - 180);
+        const endMechY = clamp(it.targetY - 170 * s, 180, viewH - 120);
 
         ctx.save();
 
-        // PHASE 1: Supersonic Jet Dive (t: 0.0 -> 0.34)
-        if (t < 0.34) {
-          const p1 = clamp(t / 0.34, 0, 1);
-          const e1 = 1 - Math.pow(1 - p1, 3);
-          const curX = lerp(startX, hoverX, e1);
-          const curY = lerp(startY, hoverY, e1);
+        // ACT 1: Large Center-Screen Entry & Swooping Mini-Tour in Jet Mode (t: 0.0 -> 0.38)
+        if (t < 0.38) {
+          const p1 = clamp(t / 0.38, 0, 1);
+          let curX, curY, flipX, pitch, jetScale;
 
-          // Ground target lock reticle at landing spot
-          ctx.save();
-          ctx.translate(it.targetX, it.targetY - 6);
-          ctx.scale(1, 0.32);
-          ctx.strokeStyle = `rgba(216, 184, 104, ${(0.35 + 0.35 * e1).toFixed(2)})`;
-          ctx.lineWidth = 1.6;
-          ctx.beginPath();
-          ctx.arc(0, 0, (95 - 35 * e1) * s, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
+          if (p1 < 0.58) {
+            // Sub-phase 1A: Enter large from top-right, swoop through center screen to left-center
+            const u = p1 / 0.58;
+            const easeU = 1 - Math.pow(1 - u, 2.2);
+            curX = lerp(viewW + 120, viewW * 0.24, easeU);
+            curY = lerp(viewH * 0.12, viewH * 0.38, easeU) + Math.sin(u * Math.PI) * (viewH * 0.16);
+            flipX = 1; // Facing left (native orientation of flight-unit-jet.png)
+            pitch = (0.24 - u * 0.32);
+            jetScale = lerp(0.85, 1.05, Math.sin(u * Math.PI * 0.5));
+          } else {
+            // Sub-phase 1B: Bank right at left-center and cruise into dead center of the screen
+            const u = (p1 - 0.58) / 0.42;
+            const easeU = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+            curX = lerp(viewW * 0.24, centerX, easeU);
+            curY = lerp(viewH * 0.38, centerY, easeU) - Math.sin(u * Math.PI) * 38;
+            flipX = -1; // Flipped horizontally to fly left -> center
+            pitch = -0.18 * (1 - easeU);
+            jetScale = 1.05;
 
-          // Cyan ion contrail streaks behind the diving jet
-          const tailDir = fromLeft ? -1 : 1;
-          for (let i = 0; i < 4; i++) {
-            const offset = (i - 1.5) * 22 * s;
-            const trailLen = (160 + (1 - e1) * 140) * s;
-            const tx = curX + tailDir * 85 * s;
-            const ty = curY - 45 * s + offset;
-            const grad = ctx.createLinearGradient(tx, ty, tx + tailDir * trailLen, ty - trailLen * 0.65);
-            grad.addColorStop(0, 'rgba(155, 240, 255, 0.92)');
-            grad.addColorStop(0.4, 'rgba(216, 184, 104, 0.55)');
+            if (!it.bankRingFired) {
+              it.bankRingFired = true;
+              this.ring(viewW * 0.24, viewH * 0.38, { radius: 135, life: 360, color: YORHA_COLORS.cyan });
+              this.burst(viewW * 0.24, viewH * 0.38, { count: 18, power: 1.1, spread: 50 });
+            }
+          }
+
+          // Blazing cyan ion contrails behind the twin rear thrusters
+          const tailDir = flipX;
+          for (let i = 0; i < 5; i++) {
+            const offset = (i - 2) * 26;
+            const trailLen = 220;
+            const tx = curX + tailDir * 110;
+            const ty = curY - 48 + offset;
+            const grad = ctx.createLinearGradient(tx, ty, tx + tailDir * trailLen, ty - trailLen * 0.45);
+            grad.addColorStop(0, 'rgba(155, 240, 255, 0.95)');
+            grad.addColorStop(0.45, 'rgba(216, 184, 104, 0.6)');
             grad.addColorStop(1, 'rgba(155, 240, 255, 0)');
             ctx.strokeStyle = grad;
-            ctx.lineWidth = (i === 1 || i === 2 ? 4.5 : 2.2) * s;
+            ctx.lineWidth = (i === 1 || i === 3 ? 6.5 : 3.2);
             ctx.beginPath();
             ctx.moveTo(tx, ty);
-            ctx.lineTo(tx + tailDir * trailLen, ty - trailLen * 0.65);
+            ctx.lineTo(tx + tailDir * trailLen, ty - trailLen * 0.45);
             ctx.stroke();
           }
 
-          // Draw Ho229 Jet Sprite
+          // Draw Large Ho229 Jet Sprite
           if (it.jetImg) {
             ctx.save();
             ctx.translate(curX, curY);
-            const pitch = (fromLeft ? -1 : 1) * (1 - e1) * 0.22;
             ctx.rotate(pitch);
-            if (fromLeft) ctx.scale(-1, 1);
-            ctx.shadowColor = 'rgba(155, 240, 255, 0.6)';
-            ctx.shadowBlur = 14 * s;
-            ctx.drawImage(it.jetImg, -jetW * 0.5, -jetH * 0.5, jetW, jetH);
+            ctx.scale(flipX * jetScale, jetScale);
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.75)';
+            ctx.shadowBlur = 22;
+            ctx.drawImage(it.jetImg, -bigJetW * 0.5, -bigJetH * 0.5, bigJetW, bigJetH);
             ctx.restore();
           }
         }
-        // PHASE 2: Mechanical Transformation — Jet to Humanoid Mech (t: 0.34 -> 0.52)
-        else if (t < 0.52) {
+        // ACT 2: Giant Center-Screen Transformation — Jet to Humanoid Mech (t: 0.38 -> 0.54)
+        else if (t < 0.54) {
           if (!it.transformedFired) {
             it.transformedFired = true;
             it.onTransform?.();
-            this.burst(hoverX, hoverY, { count: 30, power: 1.35, spread: 90 });
-            this.ring(hoverX, hoverY, { radius: 135 * s, life: 420, color: YORHA_COLORS.gold });
-            this.ring(hoverX, hoverY, { radius: 95 * s, life: 340, color: YORHA_COLORS.cyan });
+            this.burst(centerX, centerY, { count: 44, power: 1.65, spread: 130 });
+            this.ring(centerX, centerY, { radius: 240, life: 480, color: YORHA_COLORS.gold });
+            this.ring(centerX, centerY, { radius: 170, life: 380, color: YORHA_COLORS.cyan });
           }
 
-          const p2 = clamp((t - 0.34) / 0.18, 0, 1);
-          const backEase = 1 + 1.7 * Math.pow(p2 - 1, 3) + 0.7 * Math.pow(p2 - 1, 2);
+          const p2 = clamp((t - 0.38) / 0.16, 0, 1);
+          const backEase = 1 + 1.8 * Math.pow(p2 - 1, 3) + 0.8 * Math.pow(p2 - 1, 2);
 
-          // Folding Jet silhouette
-          if (it.jetImg && p2 < 0.75) {
+          // Folding Jet silhouette in center screen
+          if (it.jetImg && p2 < 0.72) {
             ctx.save();
-            ctx.globalAlpha = 1 - p2 / 0.75;
-            ctx.translate(hoverX, hoverY);
-            if (fromLeft) ctx.scale(-1, 1);
-            ctx.scale(1 - p2 * 0.48, 1 + p2 * 0.42);
-            ctx.drawImage(it.jetImg, -jetW * 0.5, -jetH * 0.5, jetW, jetH);
+            ctx.globalAlpha = 1 - p2 / 0.72;
+            ctx.translate(centerX, centerY);
+            ctx.scale(-(1 - p2 * 0.5), 1 + p2 * 0.45);
+            ctx.drawImage(it.jetImg, -bigJetW * 0.5, -bigJetH * 0.5, bigJetW, bigJetH);
             ctx.restore();
           }
 
-          // Unfolding Humanoid Mech with 2B in cockpit
+          // Unfolding Giant Humanoid Mech with 2B in cockpit & Katana
           if (it.mechImg) {
             ctx.save();
-            ctx.globalAlpha = Math.min(1, p2 * 1.35);
-            ctx.translate(hoverX, hoverY);
-            ctx.scale(0.52 + 0.48 * backEase, 0.62 + 0.38 * backEase);
-            ctx.shadowColor = 'rgba(216, 184, 104, 0.75)';
-            ctx.shadowBlur = 18 * s;
-            ctx.drawImage(it.mechImg, -mechW * 0.5, -mechH * 0.5, mechW, mechH);
+            ctx.globalAlpha = Math.min(1, p2 * 1.4);
+            ctx.translate(centerX, centerY);
+            ctx.scale(0.55 + 0.45 * backEase, 0.65 + 0.35 * backEase);
+            ctx.shadowColor = 'rgba(216, 184, 104, 0.85)';
+            ctx.shadowBlur = 26;
+            ctx.drawImage(it.mechImg, -bigMechW * 0.5, -bigMechH * 0.5, bigMechW, bigMechH);
             ctx.restore();
           }
 
-          // Transformation energy core flash & geometric HUD brackets
+          // YoRHa Tactical HUD Transformation Frame at Center Screen
           const flashAlpha = Math.sin(p2 * Math.PI);
           ctx.save();
           ctx.globalAlpha = flashAlpha;
           ctx.strokeStyle = YORHA_COLORS.gold;
-          ctx.lineWidth = 2;
-          const bw = 155 * s;
-          const bh = 155 * s;
-          ctx.strokeRect(hoverX - bw, hoverY - bh, bw * 2, bh * 2);
-          ctx.font = '700 10px "Chakra Petch", monospace';
+          ctx.lineWidth = 2.5;
+          const bw = bigMechW * 0.38;
+          const bh = bigMechH * 0.38;
+          ctx.strokeRect(centerX - bw, centerY - bh, bw * 2, bh * 2);
+          ctx.font = '700 13px "Chakra Petch", monospace';
           ctx.fillStyle = YORHA_COLORS.gold;
           ctx.textAlign = 'center';
-          ctx.fillText('HO229 TYPE-B // MANEUVER MODE', hoverX, hoverY - bh - 10);
+          ctx.fillText('HO229 TYPE-B // MANEUVER MODE ENGAGED', centerX, centerY - bh - 14);
           ctx.restore();
         }
-        // PHASE 3: Humanoid Mech Hover & Katana Gleam (t: 0.52 -> 0.78)
-        else if (t < 0.78) {
-          const p3 = clamp((t - 0.52) / 0.26, 0, 1);
-          const bobY = Math.sin(p3 * Math.PI * 2) * 6 * s;
+        // ACT 3: Humanoid Mech Mini-Tour / Powered Glide from Center to Landing Zone (t: 0.54 -> 0.84)
+        else if (t < 0.84) {
+          const p3 = clamp((t - 0.54) / 0.30, 0, 1);
+          // Hold proudly in center for first 25% of Act 3 so user admires the giant Mech & Sword, then glide to target
+          const moveT = p3 < 0.25 ? 0 : (p3 - 0.25) / 0.75;
+          const easeMove = moveT < 0.5 ? 2 * moveT * moveT : 1 - Math.pow(-2 * moveT + 2, 2) / 2;
 
-          // Ground thruster downwash rings
+          const curX = lerp(centerX, endMechX, easeMove);
+          const curY = lerp(centerY, endMechY, easeMove) - Math.sin(easeMove * Math.PI) * 42;
+          const curW = lerp(bigMechW, endMechW, easeMove);
+          const curH = lerp(bigMechH, endMechH, easeMove);
+          const bankTilt = clamp((endMechX - centerX) * 0.00025, -0.14, 0.14) * Math.sin(easeMove * Math.PI);
+
+          // Ground target lock & thruster downwash rings at destination
           ctx.save();
           ctx.translate(it.targetX, it.targetY - 6);
           ctx.scale(1, 0.3);
-          const rPulse = ((p3 * 2.5) % 1);
+          const rPulse = ((p3 * 3) % 1);
           ctx.strokeStyle = `rgba(155, 240, 255, ${(0.75 * (1 - rPulse)).toFixed(2)})`;
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 2.2;
           ctx.beginPath();
-          ctx.arc(0, 0, (45 + rPulse * 95) * s, 0, Math.PI * 2);
+          ctx.arc(0, 0, (55 + rPulse * 110) * s, 0, Math.PI * 2);
           ctx.stroke();
           ctx.restore();
 
-          // Draw Hovering Humanoid Mech
+          // Draw Gliding Humanoid Mech
           if (it.mechImg) {
             ctx.save();
-            ctx.translate(hoverX, hoverY + bobY);
-            ctx.shadowColor = 'rgba(155, 240, 255, 0.45)';
-            ctx.shadowBlur = 12 * s;
-            ctx.drawImage(it.mechImg, -mechW * 0.5, -mechH * 0.5, mechW, mechH);
+            ctx.translate(curX, curY);
+            ctx.rotate(bankTilt);
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.55)';
+            ctx.shadowBlur = 18;
+            ctx.drawImage(it.mechImg, -curW * 0.5, -curH * 0.5, curW, curH);
 
-            // Traveling 4-point diamond glint along the Mech katana blade
-            const gx = lerp(12 * s, 175 * s, p3);
-            const gy = lerp(24 * s, 82 * s, p3);
+            // Traveling 4-point diamond glint along the Mech's giant katana blade
+            const kRatio = curW / 430;
+            const gx = lerp(12 * kRatio, 175 * kRatio, p3);
+            const gy = lerp(24 * kRatio, 82 * kRatio, p3);
             const gAlpha = Math.sin(p3 * Math.PI);
             ctx.fillStyle = `rgba(255, 255, 255, ${gAlpha.toFixed(2)})`;
             ctx.beginPath();
-            ctx.arc(gx, gy, 5 * s, 0, Math.PI * 2);
+            ctx.arc(gx, gy, 6 * kRatio, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = YORHA_COLORS.gold;
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 1.8;
             ctx.beginPath();
-            ctx.moveTo(gx - 18 * s, gy);
-            ctx.lineTo(gx + 18 * s, gy);
-            ctx.moveTo(gx, gy - 18 * s);
-            ctx.lineTo(gx, gy + 18 * s);
+            ctx.moveTo(gx - 22 * kRatio, gy);
+            ctx.lineTo(gx + 22 * kRatio, gy);
+            ctx.moveTo(gx, gy - 22 * kRatio);
+            ctx.lineTo(gx, gy + 22 * kRatio);
             ctx.stroke();
             ctx.restore();
           }
-
-          // Tactical telemetry label
-          ctx.save();
-          ctx.font = '700 10px "Chakra Petch", monospace';
-          ctx.fillStyle = YORHA_COLORS.beige;
-          ctx.textAlign = 'center';
-          ctx.fillText('COCKPIT HARNESS // READY FOR DEPLOYMENT', hoverX, hoverY - mechH * 0.48);
-          ctx.restore();
         }
-        // PHASE 4: Cockpit Release, 2B Disembark & Mech Orbital Ascent (t: 0.78 -> 1.0)
+        // ACT 4: Armor Disengagement in Place & 2B Steps Out to Stay (t: 0.84 -> 1.0)
         else {
           if (!it.disembarkedFired) {
             it.disembarkedFired = true;
-            this.burst(hoverX, hoverY + 12 * s, { count: 26, power: 1.25, spread: 64 });
-            this.ring(hoverX, hoverY + 12 * s, { radius: 90 * s, life: 340, color: YORHA_COLORS.white });
-            it.onDisembark?.({ x: hoverX, y: hoverY + 25 * s });
+            this.burst(it.targetX, it.targetY - 110 * s, { count: 38, power: 1.4, spread: 95, monochrome: true });
+            this.ring(it.targetX, it.targetY - 90 * s, { radius: 130 * s, life: 420, color: YORHA_COLORS.gold });
+            this.ring(it.targetX, it.targetY - 20 * s, { radius: 95 * s, life: 360, color: YORHA_COLORS.white });
+            it.onDisembark?.({ x: it.targetX, y: it.targetY - 58 * s });
           }
 
-          const p4 = clamp((t - 0.78) / 0.22, 0, 1);
-          const ascendEase = p4 * p4;
-          const mechY = lerp(hoverY, -260, ascendEase);
+          const p4 = clamp((t - 0.84) / 0.16, 0, 1);
           const alpha = Math.max(0, 1 - p4 * 1.15);
 
-          // Upward Bunker recall beam trail
-          ctx.save();
-          ctx.globalAlpha = alpha * 0.65;
-          const beamGrad = ctx.createLinearGradient(hoverX, hoverY, hoverX, 0);
-          beamGrad.addColorStop(0, 'rgba(216, 184, 104, 0)');
-          beamGrad.addColorStop(0.5, 'rgba(247, 245, 235, 0.75)');
-          beamGrad.addColorStop(1, 'rgba(155, 240, 255, 0.9)');
-          ctx.fillStyle = beamGrad;
-          ctx.fillRect(hoverX - 24 * s * (1 - p4 * 0.5), 0, 48 * s * (1 - p4 * 0.5), hoverY);
-          ctx.restore();
-
+          // The Ho229 Mech armor disengages and dissolves in place around 2B (never flying away with her!)
           if (it.mechImg && alpha > 0.02) {
             ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.translate(hoverX, mechY);
-            ctx.scale(1 - p4 * 0.25, 1 + p4 * 0.35);
-            ctx.drawImage(it.mechImg, -mechW * 0.5, -mechH * 0.5, mechW, mechH);
+            ctx.globalAlpha = alpha * 0.85;
+            ctx.translate(endMechX, endMechY + p4 * 18 * s);
+            ctx.scale(1 + p4 * 0.12, 1 + p4 * 0.08);
+            ctx.drawImage(it.mechImg, -endMechW * 0.5, -endMechH * 0.5, endMechW, endMechH);
             ctx.restore();
           }
         }

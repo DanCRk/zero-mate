@@ -499,12 +499,12 @@ async function boot() {
     });
   });
 
-  // Initial YoRHa Ho229 Flight Unit arrival & transformation sequence
+  // Initial YoRHa Ho229 Flight Unit arrival & transformation sequence (always deploy 2B on app launch)
   if (config.visible === false) {
-    await engine.slotStow({ on: true });
-  } else {
-    await engine.slotFlightUnitIntro({ force: true });
+    await host.setConfig({ visible: true });
+    settingsModal.updateBunkerButtonText(false);
   }
+  await engine.slotFlightUnitIntro({ force: true });
 }
 
 boot().catch((err) => {
