@@ -115,6 +115,8 @@ export class ThemeEngine {
     this.weapon = new WeaponHaloRenderer(weaponCanvas, images.katanaImg);
     this.pod = new PodCompanion(podRoot, podCanvas, images.podImg);
     this.satelliteImg = images.satelliteImg || null;
+    this.flightJetImg = images.flightJetImg || null;
+    this.flightMechImg = images.flightMechImg || null;
     this.fx = fx;
     this.sound = soundBank;
     this.panel = panel;
@@ -378,6 +380,9 @@ export class ThemeEngine {
       case 'bunker_uplink':
       case 'uplink':
         return this.slotBunkerUplink(opts);
+      case 'flight_intro':
+      case 'intro':
+        return this.slotFlightUnitIntro(opts);
       default:
         break;
     }
@@ -772,6 +777,10 @@ export class ThemeEngine {
         hold: 3800,
       });
     } else {
+      if (this.flightJetImg && this.flightMechImg) {
+        await this.slotFlightUnitIntro({ force: true, line: pick(NIER_DIALOGUES.stow_in) });
+        return;
+      }
       this.stowed = false;
       this.root.hidden = false;
       this.pod.state = 'follow';
@@ -784,6 +793,150 @@ export class ThemeEngine {
         speaker: '2b',
         line: pick(NIER_DIALOGUES.stow_in),
         hold: 3800,
+      });
+    }
+
+    this.busy = false;
+  }
+
+  // SLOT: flight_intro — 2B arrives in YoRHa Flight Unit Ho229 Type-B (Jet Mode -> Humanoid Mech Transformation -> Acrobatic Disembark)
+  async slotFlightUnitIntro(opts = {}) {
+    if (this.busy && !opts.force) return;
+    this.busy = true;
+    this.stowed = false;
+    this.root.hidden = false;
+
+    const targetX = this.pos.x;
+    const targetY = this.pos.y;
+    const s = this.scale;
+
+    // Fallback to Bunker beam if Flight Unit sprites are not loaded
+    if (!this.flightJetImg || !this.flightMechImg) {
+      this.sound.play('ui-open');
+      this.fx.bunkerBeam(targetX, targetY, { life: 520, width: 58 });
+      this.p.alpha = 1;
+      this.weapon.setMode('back');
+      this.panel.say({
+        kind: 'info',
+        speaker: '2b',
+        line: opts.line || pick(NIER_DIALOGUES.boot_2b),
+        hold: 4500,
+      });
+      this.busy = false;
+      return;
+    }
+
+    // Hide standalone 2B and weapon halo while she pilots the Ho229 Flight Unit
+    this.p.alpha = 0;
+    this.weapon.setMode('hidden');
+    if (this.pod) {
+      this.pod.pos.x = targetX - 90 * this.facing;
+      this.pod.pos.y = -120;
+    }
+    this.drawFrame(performance.now());
+
+    // Phase 1: Supersonic Jet Dive audio
+    if (!opts.silent) {
+      this.sound.play('pod-glide', { rate: 1.15, gain: 0.9 });
+      this.sound.play('bunker-transport', { rate: 1.25, gain: 0.65 });
+    }
+
+    let disembarkPromise = null;
+
+    await this.fx.flightUnitIntro(targetX, targetY, {
+      jetImg: this.flightJetImg,
+      mechImg: this.flightMechImg,
+      scale: s,
+      life: 2700,
+      onTransform: () => {
+        // Phase 2: Mechanical chassis transformation (Jet -> Humanoid Maneuver Mode)
+        if (!opts.silent) {
+          this.sound.play('weapon-hum', { rate: 1.05, gain: 0.95 });
+          this.sound.play('katana-slash', { rate: 0.88, gain: 0.8 });
+        }
+      },
+      onDisembark: ({ x, y }) => {
+        // Phase 3: Cockpit opens, 2B leaps out and drops onto targetY
+        disembarkPromise = (async () => {
+          if (!opts.silent) {
+            this.sound.play('cloth-rustle', { gain: 0.85 });
+          }
+          const startX = x;
+          const startY = Math.min(targetY - 120 * s, y + 40 * s);
+          this.pos.x = startX;
+          this.pos.y = startY;
+          this.p.alpha = 1;
+          this.p.bunker = 0;
+          this.p.collapse = 0;
+          this.p.dissolve = 0;
+          this.p.glitch = 0;
+
+          if (this.pod) {
+            this.pod.state = 'follow';
+          }
+
+          // Acrobatic somersault exit from cockpit followed by gravity drop to (targetX, targetY)
+          const dropDuration = 440;
+          const t0 = performance.now();
+          await new Promise((resolve) => {
+            const step = (now) => {
+              const p = Math.min(1, (now - t0) / dropDuration);
+              const easeInQuad = p * p;
+              this.pos.x = lerp(startX, targetX, p);
+              this.pos.y = lerp(startY, targetY, easeInQuad);
+              if (p < 0.48 && this.sprite.spinImg) {
+                this.p.pose = 'spin';
+                this.tilt = p * Math.PI * 2 * this.facing;
+              } else {
+                this.p.pose = 'stand';
+                this.tilt = 0;
+                this.p.skirt = 1.05 * (1 - p);
+                this.p.hair = 0.85 * (1 - p);
+              }
+              this.place();
+              if (p < 1) {
+                requestAnimationFrame(step);
+              } else {
+                resolve();
+              }
+            };
+            requestAnimationFrame(step);
+          });
+
+          // Phase 4: Hero Landing Impact & Weapon Halo Lock
+          this.pos.x = targetX;
+          this.pos.y = targetY;
+          this.p.pose = 'stand';
+          this.tilt = 0;
+          if (!opts.silent) {
+            this.sound.play('footstep-metal', { gain: 0.95 });
+            this.sound.play('katana-sheathe', { gain: 0.85 });
+          }
+          this.fx.burst(targetX, targetY - 14, { count: 22, power: 1.0, spread: 68 });
+          this.fx.ring(targetX, targetY - 8, { radius: 85, color: '#d8b868' });
+          this.fx.ring(targetX, targetY - 8, { radius: 125, color: '#dad4bb' });
+          this.weapon.setMode('sheathe');
+          await this.perform('land');
+          this.weapon.setMode('back');
+        })();
+      },
+    });
+
+    if (disembarkPromise) {
+      await disembarkPromise;
+    } else {
+      this.pos.x = targetX;
+      this.pos.y = targetY;
+      this.p.alpha = 1;
+      this.weapon.setMode('back');
+    }
+
+    if (!opts.silentLine) {
+      this.panel.say({
+        kind: 'info',
+        speaker: '2b',
+        line: opts.line || pick(NIER_DIALOGUES.boot_2b),
+        hold: 4500,
       });
     }
 

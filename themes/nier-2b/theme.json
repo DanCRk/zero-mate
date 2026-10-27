@@ -9,6 +9,8 @@
     "peekSprite": "assets/2b-peek.png",
     "ceilingSprite": "assets/2b-ceiling.png",
     "sleepSprite": "assets/2b-sleep.png",
+    "flightJetSprite": "assets/flight-unit-jet.png",
+    "flightMechSprite": "assets/flight-unit-mech.png",
     "weapon": "assets/katana.png",
     "portrait": "assets/portrait-2b.png",
     "cutins": {
@@ -35,6 +37,16 @@
     "laser": "#e8dfc5"
   },
   "slots": {
+    "flight_intro": {
+      "animation": "ho229_flight_unit_arrival",
+      "sounds": [
+        "pod-glide",
+        "weapon-hum",
+        "katana-slash",
+        "bunker-transport",
+        "footstep-metal"
+      ]
+    },
     "sit_window": {
       "animation": "walk_and_sit_ledge",
       "sounds": [

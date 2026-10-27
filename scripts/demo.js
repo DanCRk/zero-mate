@@ -67,6 +67,7 @@ function printHelp() {
   console.log(`  npm run demo -- --loop          Ejecuta la demo en bucle continuo`);
   console.log(`  npm run demo -- --help          Muestra esta ayuda\n`);
   console.log(`${C.bold}Fases y animaciones disponibles (--stage):${C.reset}`);
+  console.log(`  ${C.cyan}intro${C.reset}       Cinemática de entrada en Unidad de Vuelo Ho229 (Avión -> Mecha -> Descenso)`);
   console.log(`  ${C.cyan}session${C.reset}     Enlace táctico inicial (SessionStart)`);
   console.log(`  ${C.cyan}prompt${C.reset}      Recepción de directiva del operador (UserPromptSubmit)`);
   console.log(`  ${C.cyan}katana${C.reset}      [Animación] Inspección de Contrato Virtuoso con halo dorado y giro 360°`);
@@ -169,12 +170,31 @@ async function ensureZeroMateRunning() {
   console.log(`${C.yellow}[OFFLINE]${C.reset}`);
   console.log(`${C.cyan}Iniciando ZeroMate en segundo plano...${C.reset}`);
 
-  const child = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'dev'], {
-    cwd: ROOT,
-    detached: true,
-    stdio: 'ignore',
-  });
-  child.unref();
+  const launcherExe = path.join(ROOT, 'ZeroMate.exe');
+  if (process.platform === 'win32' && require('node:fs').existsSync(launcherExe)) {
+    const child = spawn(launcherExe, ['--dev'], {
+      cwd: ROOT,
+      detached: true,
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    child.unref();
+  } else {
+    const electronBin = path.join(
+      ROOT,
+      'node_modules',
+      'electron',
+      'dist',
+      process.platform === 'win32' ? 'electron.exe' : 'electron'
+    );
+    const child = spawn(electronBin, ['.', '--dev'], {
+      cwd: ROOT,
+      detached: true,
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    child.unref();
+  }
 
   // Wait up to 15 seconds for startup
   const start = Date.now();
@@ -194,6 +214,19 @@ async function ensureZeroMateRunning() {
 }
 
 const STAGES = [
+  {
+    id: 'intro',
+    name: '0. Llegada en Unidad de Vuelo Ho229 Tipo-B (Flight Unit Intro)',
+    desc: '2B llega en picada supersónica en modo avión, se transforma en mecha humanoide con espada y desciende al escritorio.',
+    reaction: 'Vuelo en modo caza con propulsores cian -> Transformación a modo mecha vertical -> Salto acrobático de 2B.',
+    holdMs: 3600,
+    payload: {
+      hook_event_name: 'SlotTrigger',
+      slot: 'flight_intro',
+      force: true,
+      forceAudio: true,
+    },
+  },
   {
     id: 'session',
     name: '1. Enlace Táctico Inicial (SessionStart)',
