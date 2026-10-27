@@ -72,7 +72,7 @@ async function boot() {
     weaponCanvas: document.getElementById('weapon-back'),
     podRoot: document.getElementById('pod'),
     podCanvas: document.getElementById('pod-canvas'),
-    images: { charImg, sitImg, peekImg, sleepImg, spinImg, ceilingImg, satelliteImg, flightJetImg, flightMechImg, bunkerImg, podImg, katanaImg },
+    images: { charImg, sitImg, peekImg, sleepImg, spinImg, ceilingImg, satelliteImg, flightJetImg, flightMechImg, flightMechEmptyImg, bunkerImg, podImg, katanaImg },
     fx,
     soundBank,
     panel,

@@ -826,6 +826,7 @@ export class ThemeEngine {
     await this.fx.flightUnitRetreat(targetX, targetY, {
       jetImg: this.flightJetImg,
       mechImg: this.flightMechImg,
+      mechEmptyImg: this.flightMechEmptyImg,
       bunkerImg: this.bunkerImg,
       scale: s,
       life: 4400,

@@ -506,9 +506,11 @@ export class FxLayer {
         targetY,
         jetImg,
         mechImg,
+        mechEmptyImg,
         bunkerImg,
         scale,
         boardFired: false,
+        boarded: false,
         transformFired: false,
         dockFired: false,
         onBoard,
@@ -1267,18 +1269,21 @@ export class FxLayer {
           const easeDown = 1 - Math.pow(1 - p1, 3);
           const curY = lerp(-180, hoverMechY, easeDown);
 
-          if (it.mechImg) {
+          // Use EMPTY cockpit sprite while 2B is on ground; once boarded, switch to occupied sprite
+          const currentMechSprite = it.boarded ? it.mechImg : (it.mechEmptyImg || it.mechImg);
+          if (currentMechSprite) {
             ctx.save();
             ctx.translate(hoverMechX, curY);
             ctx.shadowColor = 'rgba(155, 240, 255, 0.75)';
             ctx.shadowBlur = 22;
-            ctx.drawImage(it.mechImg, -hoverMechW * 0.5, -hoverMechH * 0.5, hoverMechW, hoverMechH);
+            ctx.drawImage(currentMechSprite, -hoverMechW * 0.5, -hoverMechH * 0.5, hoverMechW, hoverMechH);
             ctx.restore();
           }
 
           // Boarding trigger at p1 ~ 0.65
           if (p1 >= 0.65 && !it.boardFired) {
             it.boardFired = true;
+            it.boarded = true;
             it.onBoard?.({ x: it.targetX, y: it.targetY });
             this.burst(it.targetX, it.targetY - 80 * s, { count: 28, power: 1.2, spread: 75 });
             this.ring(it.targetX, it.targetY - 80 * s, { radius: 110 * s, life: 340, color: YORHA_COLORS.gold });
