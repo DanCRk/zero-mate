@@ -36,7 +36,7 @@ function readJson(req) {
   });
 }
 
-function createBridge({ port, onEvent, onDebug }) {
+function createBridge({ port, onEvent, onSlot, onDebug }) {
   const server = http.createServer(async (req, res) => {
     if (req.headers.origin) return send(res, 403, { ok: false });
 
@@ -46,13 +46,36 @@ function createBridge({ port, onEvent, onDebug }) {
       return send(res, 200, { ok: true, name: 'zero-mate', pid: process.pid });
     }
 
+    if (req.method === 'POST' && (url.pathname === '/slot' || url.pathname === '/action')) {
+      try {
+        const body = await readJson(req);
+        const slot = body?.slot || body?.action;
+        if (!slot || typeof slot !== 'string') {
+          return send(res, 400, { ok: false, error: 'missing slot or action name' });
+        }
+        if (onSlot) onSlot(slot, body);
+        return send(res, 200, { ok: true, slot });
+      } catch (err) {
+        return send(res, 400, { ok: false, error: err.message });
+      }
+    }
+
     if (req.method === 'POST' && url.pathname === '/event') {
       try {
         const evt = await readJson(req);
-        if (!evt || typeof evt !== 'object' || typeof evt.hook_event_name !== 'string') {
-          return send(res, 400, { ok: false, error: 'missing hook_event_name' });
+        if (!evt || typeof evt !== 'object') {
+          return send(res, 400, { ok: false, error: 'invalid payload' });
         }
-        onEvent(evt);
+        if (evt.slot || evt.action) {
+          const slot = evt.slot || evt.action;
+          if (onSlot) onSlot(slot, evt);
+          if (typeof evt.hook_event_name === 'string' && onEvent) onEvent(evt);
+          return send(res, 200, { ok: true, slot });
+        }
+        if (typeof evt.hook_event_name !== 'string') {
+          return send(res, 400, { ok: false, error: 'missing hook_event_name or slot' });
+        }
+        if (onEvent) onEvent(evt);
         return send(res, 200, { ok: true });
       } catch (err) {
         return send(res, 400, { ok: false, error: err.message });

@@ -425,7 +425,8 @@ function main() {
     createBridge({
       port: PORT,
       onEvent: (evt) => overlay?.webContents.send('hook:event', evt),
-      onDebug: DEV ? debugHandler : null,
+      onSlot: (slot, opts) => sendCommand('slot', { slot, ...opts }),
+      onDebug: debugHandler,
     });
     globalShortcut.register('Control+Alt+C', () => toggleVisible());
     globalShortcut.register('Control+Alt+S', () => sendCommand('settings:toggle'));

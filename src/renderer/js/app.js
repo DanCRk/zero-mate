@@ -418,7 +418,12 @@ async function boot() {
   host.onHookEvent((evt) => {
     const type = evt.hook_event_name;
     const srcTag = evt.source === 'antigravity' ? 'AGY' : 'CLAUDE';
-    const allowHookAudio = Boolean(currentConfig.hookAudio);
+    const allowHookAudio = Boolean(currentConfig.hookAudio || evt.forceAudio || evt.sound);
+
+    if (evt.slot) {
+      engine.triggerSlot(evt.slot, evt);
+      return;
+    }
 
     if (type === 'SessionStart') {
       if (allowHookAudio) soundBank.play('pod-ack');
