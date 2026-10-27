@@ -26,6 +26,7 @@ const RAW_SOURCES = {
   'portrait-2b.png': 'portrait_2b_1792969178796.jpg',
   'portrait-pod.png': 'pod_042_anime_accurate_1792974981439.jpg',
   '2b-ceiling.png': '2b_ceiling_hang_1792987247479.jpg',
+  'app-icon.jpg': 'app-icon.jpg',
 };
 
 const PS_SCRIPT = `
@@ -200,6 +201,10 @@ public static class SpriteProcessor {
 "@
 
 function Process-Cutout([string]$inFile, [string]$outFile, [int]$w, [int]$h, [int]$padTop, [int]$padBottom, [bool]$centerY = $false) {
+  if (-not (Test-Path $inFile)) {
+    Write-Host ("  [SKIP] {0} not found, using existing output" -f (Split-Path $inFile -Leaf))
+    return
+  }
   $src = [System.Drawing.Bitmap]::new($inFile)
   $keyed = [SpriteProcessor]::ChromaKey($src, 26, 44)
   $bounds = [SpriteProcessor]::AlphaBounds($keyed, 40)
@@ -212,6 +217,10 @@ function Process-Cutout([string]$inFile, [string]$outFile, [int]$w, [int]$h, [in
 }
 
 function Process-Direct([string]$inFile, [string]$outFile, [int]$w, [int]$h) {
+  if (-not (Test-Path $inFile)) {
+    Write-Host ("  [SKIP] {0} not found, using existing output" -f (Split-Path $inFile -Leaf))
+    return
+  }
   $src = [System.Drawing.Bitmap]::new($inFile)
   $final = [SpriteProcessor]::ResizeExact($src, $w, $h)
   $final.Save($outFile, [System.Drawing.Imaging.ImageFormat]::Png)
@@ -230,12 +239,20 @@ Process-Direct (Join-Path $RawDir "cutin-slash.png")  (Join-Path $OutDir "cutin-
 Process-Direct (Join-Path $RawDir "cutin-eyes.png")   (Join-Path $OutDir "cutin-eyes.png")   420 236
 Process-Direct (Join-Path $RawDir "portrait-2b.png")  (Join-Path $OutDir "portrait-2b.png")  160 160
 Process-Cutout (Join-Path $RawDir "portrait-pod.png") (Join-Path $OutDir "portrait-pod.png") 160 160 12 12 $true
-Process-Direct (Join-Path $RawDir "portrait-2b.png")  (Join-Path $OutDir "tray.png")         32 32
 
-$p2b = [System.Drawing.Bitmap]::new((Join-Path $RawDir "portrait-2b.png"))
-[SpriteProcessor]::WriteIco($p2b, (Join-Path $OutDir "yorha.ico"))
-$p2b.Dispose()
-Write-Host "  [OK] yorha.ico generated"
+$iconSource = Join-Path $RawDir "app-icon.jpg"
+if (-not (Test-Path $iconSource)) {
+  $iconSource = Join-Path $RawDir "portrait-2b.png"
+}
+if (Test-Path $iconSource) {
+  Process-Direct $iconSource (Join-Path $OutDir "tray.png") 32 32
+  Process-Direct $iconSource (Join-Path $OutDir "app-icon.png") 512 512
+
+  $iconBmp = [System.Drawing.Bitmap]::new($iconSource)
+  [SpriteProcessor]::WriteIco($iconBmp, (Join-Path $OutDir "yorha.ico"))
+  $iconBmp.Dispose()
+  Write-Host "  [OK] yorha.ico, tray.png & app-icon.png generated from $(Split-Path $iconSource -Leaf)"
+}
 `;
 
 function main() {
@@ -247,9 +264,15 @@ function main() {
     const srcPath = path.join(ARTIFACT_DIR, srcName);
     const dstPath = path.join(RAW_DIR, dstName);
     if (fs.existsSync(srcPath)) {
-      fs.copyFileSync(srcPath, dstPath);
+      if (path.resolve(srcPath) !== path.resolve(dstPath)) {
+        fs.copyFileSync(srcPath, dstPath);
+      }
     } else if (!fs.existsSync(dstPath)) {
-      throw new Error(`Missing raw image: ${srcPath}`);
+      if (fs.existsSync(path.join(ASSETS_DIR, dstName))) {
+        console.warn(`  [SKIP] ${srcName} not in raw/artifact dir, using existing ${dstName}`);
+      } else {
+        throw new Error(`Missing raw image: ${srcPath}`);
+      }
     }
   }
 
