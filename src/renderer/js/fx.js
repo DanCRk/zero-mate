@@ -473,11 +473,55 @@ export class FxLayer {
     return new Promise((done) => this.add({ type: 'diagnostic_hologram', life, podPosFn, charPosFn, done }));
   }
 
+  // YoRHa Ho229 Type-B Flight Unit Arrival from Orbital Bunker & Transformation Sequence
+  flightUnitIntro(targetX, targetY, { jetImg, mechImg, mechEmptyImg, bunkerImg, scale = 0.62, life = 4600, onLaunch, onTransform, onDisembark } = {}) {
+    return new Promise((done) => {
+      this.add({
+        type: 'flight_unit_intro',
+        life,
+        targetX,
+        targetY,
+        jetImg,
+        mechImg,
+        bunkerImg,
+        scale,
+        launchFired: false,
+        transformedFired: false,
+        disembarkedFired: false,
+        onLaunch,
+        onTransform,
+        onDisembark,
+        done,
+      });
+    });
+  }
+
+  // YoRHa Ho229 Type-B Extraction & Ascent to Orbital Bunker Sequence
+  flightUnitRetreat(targetX, targetY, { jetImg, mechImg, mechEmptyImg, bunkerImg, scale = 0.62, life = 4400, onBoard, onTransform, onDock } = {}) {
+    return new Promise((done) => {
+      this.add({
+        type: 'flight_unit_retreat',
+        life,
+        targetX,
+        targetY,
+        jetImg,
+        mechImg,
+        mechEmptyImg,
+        bunkerImg,
+        scale,
+        boardFired: false,
+        boarded: false,
+        transformFired: false,
+        dockFired: false,
+        onBoard,
+        onTransform,
+        onDock,
+        done,
+      });
+    });
+  }
+
   frame(now) {
-    if (now - this.last < FRAME_MS - 2) {
-      requestAnimationFrame((t) => this.frame(t));
-      return;
-    }
     const dt = Math.min(0.08, (now - (this.last || now)) / 1000);
     this.last = now;
 
@@ -882,6 +926,510 @@ export class FxLayer {
         ctx.font = '700 9px "Chakra Petch", monospace';
         ctx.fillStyle = YORHA_COLORS.gold;
         ctx.fillText('STANDBY // 2B RECHARGE [100%]', char.x - 62, ringY - 24);
+        ctx.restore();
+        break;
+      }
+
+      case 'flight_unit_intro': {
+        const dpr = window.devicePixelRatio || 1;
+        const viewW = this.canvas.width / dpr;
+        const viewH = this.canvas.height / dpr;
+        const s = it.scale || 0.62;
+
+        // YoRHa Orbital Bunker Station coordinates (Upper screen launch base)
+        const bunkerW = Math.min(520, viewW * 0.44);
+        const bunkerH = bunkerW * (480 / 640);
+        const bunkerX = viewW * 0.60;
+        const bunkerY = Math.max(120, viewH * 0.16);
+
+        // Grand center-screen coordinates for the large showcase & transformation
+        const centerX = viewW * 0.5;
+        const centerY = viewH * 0.43;
+
+        // Large showcase dimensions in the middle of the screen
+        const bigJetW = Math.min(680, viewW * 0.54);
+        const bigJetH = bigJetW * (320 / 520);
+        const bigMechW = Math.min(620, viewH * 0.66);
+        const bigMechH = bigMechW;
+
+        // Final landing Mech size aligned with 2B's standing scale at (targetX, targetY)
+        const endMechW = 450 * (s / 0.62);
+        const endMechH = endMechW;
+        const endMechX = clamp(it.targetX, 180, viewW - 180);
+        const endMechY = clamp(it.targetY - 170 * s, 180, viewH - 120);
+
+        ctx.save();
+
+        // ORBITAL BUNKER LAUNCH BAY (t: 0.0 -> 0.28)
+        if (t < 0.28) {
+          const pB = t / 0.28;
+          // Smooth fade in and stealth fade out
+          const bAlpha = pB < 0.25 ? (pB / 0.25) : Math.max(0, 1 - (pB - 0.25) / 0.75);
+
+          ctx.save();
+          ctx.globalAlpha = bAlpha;
+
+          // Holographic Orbital Telemetry Grid & Catapult Vector
+          ctx.strokeStyle = 'rgba(216, 184, 104, 0.45)';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(bunkerX - bunkerW * 0.48, bunkerY - bunkerH * 0.42, bunkerW * 0.96, bunkerH * 0.84);
+
+          // Diagonal catapult launch guide line pointing down towards screen center
+          ctx.strokeStyle = 'rgba(155, 240, 255, 0.6)';
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(bunkerX - bunkerW * 0.22, bunkerY + bunkerH * 0.12);
+          ctx.lineTo(viewW * 0.24, viewH * 0.40);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Catapult Charge Ring
+          const pulseR = (pB * 4) % 1;
+          ctx.strokeStyle = `rgba(155, 240, 255, ${(0.85 * (1 - pulseR)).toFixed(2)})`;
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.arc(bunkerX - bunkerW * 0.22, bunkerY + bunkerH * 0.12, 28 + pulseR * 42, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // YoRHa Mission Header HUD
+          ctx.font = '700 11px "Chakra Petch", monospace';
+          ctx.fillStyle = YORHA_COLORS.gold;
+          ctx.textAlign = 'left';
+          ctx.fillText('13TH ORBITAL SATELLITE BASE // BUNKER', bunkerX - bunkerW * 0.46, bunkerY - bunkerH * 0.42 - 10);
+          ctx.fillStyle = YORHA_COLORS.cyan;
+          ctx.fillText('HO229 CATAPULT TUBE: CHARGED // EJECTION VECTOR CONFIRMED', bunkerX - bunkerW * 0.46, bunkerY + bunkerH * 0.42 + 16);
+
+          // Render High-Res YoRHa Bunker Station Sprite
+          if (it.bunkerImg) {
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.65)';
+            ctx.shadowBlur = 24;
+            ctx.drawImage(it.bunkerImg, bunkerX - bunkerW * 0.5, bunkerY - bunkerH * 0.5, bunkerW, bunkerH);
+          }
+          ctx.restore();
+
+          // Catapult Launch Trigger at t ~ 0.08
+          if (t >= 0.08 && !it.launchFired) {
+            it.launchFired = true;
+            it.onLaunch?.();
+            this.burst(bunkerX - bunkerW * 0.22, bunkerY + bunkerH * 0.12, { count: 32, power: 1.6, spread: 80 });
+            this.ring(bunkerX - bunkerW * 0.22, bunkerY + bunkerH * 0.12, { radius: 130, life: 360, color: YORHA_COLORS.cyan });
+            this.ring(bunkerX - bunkerW * 0.22, bunkerY + bunkerH * 0.12, { radius: 180, life: 420, color: YORHA_COLORS.gold });
+          }
+        }
+
+        // ACT 1: Catapult Ejection & Grand Swooping Tour in Jet Mode (t: 0.08 -> 0.38)
+        if (t < 0.38) {
+          const p1 = clamp((t - 0.08) / 0.30, 0, 1);
+          let curX, curY, flipX, pitch, jetScale;
+
+          const launchStartX = bunkerX - bunkerW * 0.22;
+          const launchStartY = bunkerY + bunkerH * 0.12;
+
+          if (p1 < 0.58) {
+            // Sub-phase 1A: Ejected from Bunker catapult, accelerating into open center-left screen
+            const u = p1 / 0.58;
+            const easeU = 1 - Math.pow(1 - u, 2.4);
+            curX = lerp(launchStartX, viewW * 0.22, easeU);
+            curY = lerp(launchStartY, viewH * 0.38, easeU) + Math.sin(u * Math.PI) * (viewH * 0.14);
+            flipX = 1; // Facing left
+            pitch = (0.28 - u * 0.36);
+            jetScale = lerp(0.55, 1.05, Math.sin(u * Math.PI * 0.5));
+          } else {
+            // Sub-phase 1B: High-G bank at screen left, cruising smoothly into dead center of the screen
+            const u = (p1 - 0.58) / 0.42;
+            const easeU = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+            curX = lerp(viewW * 0.22, centerX, easeU);
+            curY = lerp(viewH * 0.38, centerY, easeU) - Math.sin(u * Math.PI) * 38;
+            flipX = -1; // Flipped horizontally to fly left -> center
+            pitch = -0.18 * (1 - easeU);
+            jetScale = 1.05;
+
+            if (!it.bankRingFired) {
+              it.bankRingFired = true;
+              this.ring(viewW * 0.22, viewH * 0.38, { radius: 140, life: 360, color: YORHA_COLORS.cyan });
+              this.burst(viewW * 0.22, viewH * 0.38, { count: 20, power: 1.15, spread: 55 });
+            }
+          }
+
+          // Blazing cyan ion contrails behind the twin rear thrusters
+          const tailDir = flipX;
+          for (let i = 0; i < 5; i++) {
+            const offset = (i - 2) * 26;
+            const trailLen = 230;
+            const tx = curX + tailDir * 110;
+            const ty = curY - 48 + offset;
+            const grad = ctx.createLinearGradient(tx, ty, tx + tailDir * trailLen, ty - trailLen * 0.45);
+            grad.addColorStop(0, 'rgba(155, 240, 255, 0.95)');
+            grad.addColorStop(0.45, 'rgba(216, 184, 104, 0.6)');
+            grad.addColorStop(1, 'rgba(155, 240, 255, 0)');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = (i === 1 || i === 3 ? 6.5 : 3.2);
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx + tailDir * trailLen, ty - trailLen * 0.45);
+            ctx.stroke();
+          }
+
+          // Draw Large Ho229 Jet Sprite
+          if (it.jetImg) {
+            ctx.save();
+            ctx.translate(curX, curY);
+            ctx.rotate(pitch);
+            ctx.scale(flipX * jetScale, jetScale);
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.75)';
+            ctx.shadowBlur = 24;
+            ctx.drawImage(it.jetImg, -bigJetW * 0.5, -bigJetH * 0.5, bigJetW, bigJetH);
+            ctx.restore();
+          }
+        }
+        // ACT 2: Giant Center-Screen Transformation — Jet to Humanoid Mech (t: 0.38 -> 0.54)
+        else if (t < 0.54) {
+          if (!it.transformedFired) {
+            it.transformedFired = true;
+            it.onTransform?.();
+            this.burst(centerX, centerY, { count: 46, power: 1.7, spread: 135 });
+            this.ring(centerX, centerY, { radius: 250, life: 480, color: YORHA_COLORS.gold });
+            this.ring(centerX, centerY, { radius: 175, life: 380, color: YORHA_COLORS.cyan });
+          }
+
+          const p2 = clamp((t - 0.38) / 0.16, 0, 1);
+          const backEase = 1 + 1.8 * Math.pow(p2 - 1, 3) + 0.8 * Math.pow(p2 - 1, 2);
+
+          // Folding Jet silhouette in center screen
+          if (it.jetImg && p2 < 0.72) {
+            ctx.save();
+            ctx.globalAlpha = 1 - p2 / 0.72;
+            ctx.translate(centerX, centerY);
+            ctx.scale(-(1 - p2 * 0.5), 1 + p2 * 0.45);
+            ctx.drawImage(it.jetImg, -bigJetW * 0.5, -bigJetH * 0.5, bigJetW, bigJetH);
+            ctx.restore();
+          }
+
+          // Unfolding Giant Humanoid Mech with 2B in cockpit & Katana
+          if (it.mechImg) {
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, p2 * 1.4);
+            ctx.translate(centerX, centerY);
+            ctx.scale(0.55 + 0.45 * backEase, 0.65 + 0.35 * backEase);
+            ctx.shadowColor = 'rgba(216, 184, 104, 0.85)';
+            ctx.shadowBlur = 28;
+            ctx.drawImage(it.mechImg, -bigMechW * 0.5, -bigMechH * 0.5, bigMechW, bigMechH);
+            ctx.restore();
+          }
+
+          // YoRHa Tactical HUD Transformation Frame at Center Screen
+          const flashAlpha = Math.sin(p2 * Math.PI);
+          ctx.save();
+          ctx.globalAlpha = flashAlpha;
+          ctx.strokeStyle = YORHA_COLORS.gold;
+          ctx.lineWidth = 2.5;
+          const bw = bigMechW * 0.38;
+          const bh = bigMechH * 0.38;
+          ctx.strokeRect(centerX - bw, centerY - bh, bw * 2, bh * 2);
+          ctx.font = '700 13px "Chakra Petch", monospace';
+          ctx.fillStyle = YORHA_COLORS.gold;
+          ctx.textAlign = 'center';
+          ctx.fillText('HO229 TYPE-B // MANEUVER MODE ENGAGED', centerX, centerY - bh - 14);
+          ctx.restore();
+        }
+        // ACT 3: Humanoid Mech Mini-Tour / Powered Glide from Center to Landing Zone (t: 0.54 -> 0.84)
+        else if (t < 0.84) {
+          const p3 = clamp((t - 0.54) / 0.30, 0, 1);
+          // Hold proudly in center for first 25% of Act 3 so user admires the giant Mech & Sword, then glide to target
+          const moveT = p3 < 0.25 ? 0 : (p3 - 0.25) / 0.75;
+          const easeMove = moveT < 0.5 ? 2 * moveT * moveT : 1 - Math.pow(-2 * moveT + 2, 2) / 2;
+
+          const curX = lerp(centerX, endMechX, easeMove);
+          const curY = lerp(centerY, endMechY, easeMove) - Math.sin(easeMove * Math.PI) * 42;
+          const curW = lerp(bigMechW, endMechW, easeMove);
+          const curH = lerp(bigMechH, endMechH, easeMove);
+          const bankTilt = clamp((endMechX - centerX) * 0.00025, -0.14, 0.14) * Math.sin(easeMove * Math.PI);
+
+          // Ground target lock & thruster downwash rings at destination
+          ctx.save();
+          ctx.translate(it.targetX, it.targetY - 6);
+          ctx.scale(1, 0.3);
+          const rPulse = ((p3 * 3) % 1);
+          ctx.strokeStyle = `rgba(155, 240, 255, ${(0.75 * (1 - rPulse)).toFixed(2)})`;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.arc(0, 0, (55 + rPulse * 110) * s, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+
+          // Draw Gliding Humanoid Mech
+          if (it.mechImg) {
+            ctx.save();
+            ctx.translate(curX, curY);
+            ctx.rotate(bankTilt);
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.55)';
+            ctx.shadowBlur = 18;
+            ctx.drawImage(it.mechImg, -curW * 0.5, -curH * 0.5, curW, curH);
+
+            // Traveling 4-point diamond glint along the Mech's giant katana blade
+            const kRatio = curW / 430;
+            const gx = lerp(12 * kRatio, 175 * kRatio, p3);
+            const gy = lerp(24 * kRatio, 82 * kRatio, p3);
+            const gAlpha = Math.sin(p3 * Math.PI);
+            ctx.fillStyle = `rgba(255, 255, 255, ${gAlpha.toFixed(2)})`;
+            ctx.beginPath();
+            ctx.arc(gx, gy, 6 * kRatio, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = YORHA_COLORS.gold;
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(gx - 22 * kRatio, gy);
+            ctx.lineTo(gx + 22 * kRatio, gy);
+            ctx.moveTo(gx, gy - 22 * kRatio);
+            ctx.lineTo(gx, gy + 22 * kRatio);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+        // ACT 4: Armor Disengagement in Place & 2B Steps Out to Stay (t: 0.84 -> 1.0)
+        else {
+          if (!it.disembarkedFired) {
+            it.disembarkedFired = true;
+            this.burst(it.targetX, it.targetY - 110 * s, { count: 38, power: 1.4, spread: 95, monochrome: true });
+            this.ring(it.targetX, it.targetY - 90 * s, { radius: 130 * s, life: 420, color: YORHA_COLORS.gold });
+            this.ring(it.targetX, it.targetY - 20 * s, { radius: 95 * s, life: 360, color: YORHA_COLORS.white });
+            it.onDisembark?.({ x: it.targetX, y: it.targetY - 58 * s });
+          }
+
+          const p4 = clamp((t - 0.84) / 0.16, 0, 1);
+          const alpha = Math.max(0, 1 - p4 * 1.15);
+
+          // The Ho229 Mech armor disengages and dissolves in place around 2B (stays on screen as 2B!)
+          if (it.mechImg && alpha > 0.02) {
+            ctx.save();
+            ctx.globalAlpha = alpha * 0.85;
+            ctx.translate(endMechX, endMechY + p4 * 18 * s);
+            ctx.scale(1 + p4 * 0.12, 1 + p4 * 0.08);
+            ctx.drawImage(it.mechImg, -endMechW * 0.5, -endMechH * 0.5, endMechW, endMechH);
+            ctx.restore();
+          }
+        }
+
+        ctx.restore();
+        break;
+      }
+
+      // ========================================================================
+      // RETREAT TO ORBITAL BUNKER (Ctrl+Alt+C):
+      // Extraction Beacon -> Mech Drops Down & 2B Boards -> Mid-Air Transformation
+      // to Jet -> Supersonic Climb to Orbit -> Bunker Docking & Stealth Transition
+      // ========================================================================
+      case 'flight_unit_retreat': {
+        const dpr = window.devicePixelRatio || 1;
+        const viewW = this.canvas.width / dpr;
+        const viewH = this.canvas.height / dpr;
+        const s = it.scale || 0.62;
+
+        // YoRHa Orbital Bunker Station coordinates (Upper screen reception base)
+        const bunkerW = Math.min(520, viewW * 0.44);
+        const bunkerH = bunkerW * (480 / 640);
+        const bunkerX = viewW * 0.50;
+        const bunkerY = Math.max(120, viewH * 0.16);
+
+        // Hover Mech size aligned with 2B's scale
+        const hoverMechW = 450 * (s / 0.62);
+        const hoverMechH = hoverMechW;
+        const hoverMechX = clamp(it.targetX, 180, viewW - 180);
+        const hoverMechY = clamp(it.targetY - 150 * s, 140, viewH - 120);
+
+        // Mid-air transformation & climb dimensions
+        const jetW = Math.min(560, viewW * 0.48);
+        const jetH = jetW * (320 / 520);
+
+        ctx.save();
+
+        // ACT 1: Extraction Beacon, Ho229 Mech Descent & 2B Boarding (t: 0.0 -> 0.28)
+        if (t < 0.28) {
+          const p1 = clamp(t / 0.28, 0, 1);
+
+          // Vertical Extraction Beacon from 2B to Orbit
+          const beaconGrad = ctx.createLinearGradient(it.targetX, it.targetY, it.targetX, 0);
+          beaconGrad.addColorStop(0, 'rgba(155, 240, 255, 0.7)');
+          beaconGrad.addColorStop(0.5, 'rgba(216, 184, 104, 0.4)');
+          beaconGrad.addColorStop(1, 'rgba(155, 240, 255, 0)');
+          ctx.strokeStyle = beaconGrad;
+          ctx.lineWidth = 14 * (1 - p1 * 0.5);
+          ctx.beginPath();
+          ctx.moveTo(it.targetX, it.targetY);
+          ctx.lineTo(it.targetX, 0);
+          ctx.stroke();
+
+          // HUD Prompt over 2B
+          ctx.font = '700 12px "Chakra Petch", monospace';
+          ctx.fillStyle = YORHA_COLORS.cyan;
+          ctx.textAlign = 'center';
+          ctx.fillText('[EXTRACTION PROTOCOL ACTIVE] // HO229 DESCENT IN PROGRESS', it.targetX, it.targetY - 260 * s);
+
+          // Mech descends from top into hover position
+          const easeDown = 1 - Math.pow(1 - p1, 3);
+          const curY = lerp(-180, hoverMechY, easeDown);
+
+          // Use EMPTY cockpit sprite while 2B is on ground; once boarded, switch to occupied sprite
+          const currentMechSprite = it.boarded ? it.mechImg : (it.mechEmptyImg || it.mechImg);
+          if (currentMechSprite) {
+            ctx.save();
+            ctx.translate(hoverMechX, curY);
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.75)';
+            ctx.shadowBlur = 22;
+            ctx.drawImage(currentMechSprite, -hoverMechW * 0.5, -hoverMechH * 0.5, hoverMechW, hoverMechH);
+            ctx.restore();
+          }
+
+          // Boarding trigger at p1 ~ 0.65
+          if (p1 >= 0.65 && !it.boardFired) {
+            it.boardFired = true;
+            it.boarded = true;
+            it.onBoard?.({ x: it.targetX, y: it.targetY });
+            this.burst(it.targetX, it.targetY - 80 * s, { count: 28, power: 1.2, spread: 75 });
+            this.ring(it.targetX, it.targetY - 80 * s, { radius: 110 * s, life: 340, color: YORHA_COLORS.gold });
+          }
+        }
+        // ACT 2: Cockpit Lock & Mid-Air Transformation to Jet Mode (t: 0.28 -> 0.48)
+        else if (t < 0.48) {
+          const p2 = clamp((t - 0.28) / 0.20, 0, 1);
+
+          if (!it.transformFired) {
+            it.transformFired = true;
+            it.onTransform?.();
+            this.burst(hoverMechX, hoverMechY, { count: 42, power: 1.5, spread: 110 });
+            this.ring(hoverMechX, hoverMechY, { radius: 180, life: 400, color: YORHA_COLORS.cyan });
+            this.ring(hoverMechX, hoverMechY, { radius: 240, life: 460, color: YORHA_COLORS.gold });
+          }
+
+          // Transformation: Mech folds into Jet
+          if (it.mechImg && p2 < 0.68) {
+            ctx.save();
+            ctx.globalAlpha = 1 - p2 / 0.68;
+            ctx.translate(hoverMechX, hoverMechY);
+            ctx.scale(1 - p2 * 0.4, 1 + p2 * 0.2);
+            ctx.drawImage(it.mechImg, -hoverMechW * 0.5, -hoverMechH * 0.5, hoverMechW, hoverMechH);
+            ctx.restore();
+          }
+
+          if (it.jetImg) {
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, p2 * 1.5);
+            ctx.translate(hoverMechX, hoverMechY);
+            ctx.rotate(-Math.PI * 0.5 * p2); // Rotate upward towards sky
+            ctx.drawImage(it.jetImg, -jetW * 0.5, -jetH * 0.5, jetW, jetH);
+            ctx.restore();
+          }
+
+          // Tactical HUD Frame
+          ctx.save();
+          ctx.strokeStyle = YORHA_COLORS.gold;
+          ctx.lineWidth = 2.0;
+          ctx.strokeRect(hoverMechX - 180, hoverMechY - 90, 360, 180);
+          ctx.font = '700 12px "Chakra Petch", monospace';
+          ctx.fillStyle = YORHA_COLORS.gold;
+          ctx.textAlign = 'center';
+          ctx.fillText('HO229 CHASSIS SEALED // TARGET: ORBITAL BUNKER', hoverMechX, hoverMechY - 105);
+          ctx.restore();
+        }
+        // ACT 3: Supersonic Climb & Orbital Bunker Manifestation (t: 0.48 -> 0.82)
+        else if (t < 0.82) {
+          const p3 = clamp((t - 0.48) / 0.34, 0, 1);
+          const easeClimb = p3 * p3 * p3;
+
+          // Manifest YoRHa Orbital Bunker at Top of Screen
+          const bAlpha = Math.min(1, p3 * 2.5);
+          ctx.save();
+          ctx.globalAlpha = bAlpha;
+
+          // Holographic Docking Corridor lasers from Bunker
+          ctx.strokeStyle = 'rgba(216, 184, 104, 0.55)';
+          ctx.lineWidth = 1.4;
+          ctx.strokeRect(bunkerX - bunkerW * 0.48, bunkerY - bunkerH * 0.42, bunkerW * 0.96, bunkerH * 0.84);
+
+          // Docking guidance beam towards incoming craft
+          ctx.strokeStyle = 'rgba(155, 240, 255, 0.65)';
+          ctx.setLineDash([10, 8]);
+          ctx.beginPath();
+          ctx.moveTo(bunkerX, bunkerY + bunkerH * 0.18);
+          ctx.lineTo(hoverMechX, viewH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.font = '700 11px "Chakra Petch", monospace';
+          ctx.fillStyle = YORHA_COLORS.gold;
+          ctx.textAlign = 'center';
+          ctx.fillText('13TH ORBITAL BUNKER // DOCKING CORRIDOR ALIGNED', bunkerX, bunkerY - bunkerH * 0.42 - 10);
+
+          if (it.bunkerImg) {
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.7)';
+            ctx.shadowBlur = 24;
+            ctx.drawImage(it.bunkerImg, bunkerX - bunkerW * 0.5, bunkerY - bunkerH * 0.5, bunkerW, bunkerH);
+          }
+          ctx.restore();
+
+          // Ho229 Jet climbing at extreme speed towards Bunker reception dock
+          const curX = lerp(hoverMechX, bunkerX, easeClimb);
+          const curY = lerp(hoverMechY, bunkerY + bunkerH * 0.12, easeClimb);
+          const curScale = lerp(1.0, 0.42, easeClimb);
+
+          // Blazing twin ion thrusters streaming downwards
+          for (let i = 0; i < 4; i++) {
+            const offset = (i - 1.5) * 32 * curScale;
+            const trailLen = 320 * curScale;
+            const tx = curX + offset;
+            const ty = curY + 60 * curScale;
+            const grad = ctx.createLinearGradient(tx, ty, tx, ty + trailLen);
+            grad.addColorStop(0, 'rgba(155, 240, 255, 0.95)');
+            grad.addColorStop(0.5, 'rgba(216, 184, 104, 0.7)');
+            grad.addColorStop(1, 'rgba(155, 240, 255, 0)');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = (i === 1 || i === 2 ? 8 : 4) * curScale;
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx, ty + trailLen);
+            ctx.stroke();
+          }
+
+          if (it.jetImg) {
+            ctx.save();
+            ctx.translate(curX, curY);
+            ctx.rotate(-Math.PI * 0.5); // Pointing straight up
+            ctx.scale(curScale, curScale);
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.9)';
+            ctx.shadowBlur = 28;
+            ctx.drawImage(it.jetImg, -jetW * 0.5, -jetH * 0.5, jetW, jetH);
+            ctx.restore();
+          }
+        }
+        // ACT 4: Docking into Bunker Bay & Stealth Fade (t: 0.82 -> 1.0)
+        else {
+          const p4 = clamp((t - 0.82) / 0.18, 0, 1);
+
+          if (!it.dockFired) {
+            it.dockFired = true;
+            it.onDock?.();
+            this.burst(bunkerX, bunkerY + bunkerH * 0.12, { count: 52, power: 1.85, spread: 130 });
+            this.ring(bunkerX, bunkerY + bunkerH * 0.12, { radius: 180, life: 440, color: YORHA_COLORS.gold });
+            this.ring(bunkerX, bunkerY + bunkerH * 0.12, { radius: 120, life: 340, color: YORHA_COLORS.cyan });
+          }
+
+          const fadeOut = Math.max(0, 1 - p4 * 1.1);
+          ctx.save();
+          ctx.globalAlpha = fadeOut;
+
+          ctx.font = '700 12px "Chakra Petch", monospace';
+          ctx.fillStyle = YORHA_COLORS.cyan;
+          ctx.textAlign = 'center';
+          ctx.fillText('[DOCKING COMPLETE] // UNIT 2B SECURED // BUNKER RE-ENGAGING STEALTH', bunkerX, bunkerY + bunkerH * 0.42 + 20);
+
+          if (it.bunkerImg) {
+            ctx.shadowColor = 'rgba(216, 184, 104, 0.8)';
+            ctx.shadowBlur = 26;
+            ctx.drawImage(it.bunkerImg, bunkerX - bunkerW * 0.5, bunkerY - bunkerH * 0.5, bunkerW, bunkerH);
+          }
+          ctx.restore();
+        }
+
         ctx.restore();
         break;
       }

@@ -1,6 +1,6 @@
 {
   "name": "zero-mate",
-  "version": "0.3.3-alpha.1",
+  "version": "0.4.0-alpha.1",
   "description": "ZeroMate — Multi-Theme Desktop Agent Engine with Semantic Action Slots, 2D WebGL Rigging, Window Tracking and Headless Multi-Brain Routing.",
   "main": "src/main/main.js",
   "private": true,

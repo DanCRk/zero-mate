@@ -67,6 +67,7 @@ function printHelp() {
   console.log(`  npm run demo -- --loop          Ejecuta la demo en bucle continuo`);
   console.log(`  npm run demo -- --help          Muestra esta ayuda\n`);
   console.log(`${C.bold}Fases y animaciones disponibles (--stage):${C.reset}`);
+  console.log(`  ${C.cyan}intro${C.reset}       Cinemática de entrada en Unidad de Vuelo Ho229 (Avión -> Mecha -> Descenso)`);
   console.log(`  ${C.cyan}session${C.reset}     Enlace táctico inicial (SessionStart)`);
   console.log(`  ${C.cyan}prompt${C.reset}      Recepción de directiva del operador (UserPromptSubmit)`);
   console.log(`  ${C.cyan}katana${C.reset}      [Animación] Inspección de Contrato Virtuoso con halo dorado y giro 360°`);
@@ -169,12 +170,31 @@ async function ensureZeroMateRunning() {
   console.log(`${C.yellow}[OFFLINE]${C.reset}`);
   console.log(`${C.cyan}Iniciando ZeroMate en segundo plano...${C.reset}`);
 
-  const child = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'dev'], {
-    cwd: ROOT,
-    detached: true,
-    stdio: 'ignore',
-  });
-  child.unref();
+  const launcherExe = path.join(ROOT, 'ZeroMate.exe');
+  if (process.platform === 'win32' && require('node:fs').existsSync(launcherExe)) {
+    const child = spawn(launcherExe, ['--dev'], {
+      cwd: ROOT,
+      detached: true,
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    child.unref();
+  } else {
+    const electronBin = path.join(
+      ROOT,
+      'node_modules',
+      'electron',
+      'dist',
+      process.platform === 'win32' ? 'electron.exe' : 'electron'
+    );
+    const child = spawn(electronBin, ['.', '--dev'], {
+      cwd: ROOT,
+      detached: true,
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    child.unref();
+  }
 
   // Wait up to 15 seconds for startup
   const start = Date.now();
@@ -194,6 +214,32 @@ async function ensureZeroMateRunning() {
 }
 
 const STAGES = [
+  {
+    id: 'intro',
+    name: '0. Llegada en Unidad de Vuelo Ho229 Tipo-B (Flight Unit Intro)',
+    desc: '2B aparece en grande en el centro de la pantalla en modo avión, hace un recorrido aéreo, se transforma en mecha con espada y aterriza quedando como 2B.',
+    reaction: 'Recorrido en modo avión a gran escala -> Transformación central a Mecha Humanoide -> Planeo hasta posición final -> Desacople de armadura quedando 2B lista.',
+    holdMs: 4600,
+    payload: {
+      hook_event_name: 'SlotTrigger',
+      slot: 'flight_intro',
+      force: true,
+      forceAudio: true,
+    },
+  },
+  {
+    id: 'retreat',
+    name: '0B. Retirada de 2B al Búnker Orbital (Flight Unit Retreat)',
+    desc: '2B solicita extracción: la Unidad de Vuelo Ho229 desciende en modo mecha, 2B aborda la cabina, se transforma en caza y asciende supersónicamente hasta acoplarse en el Búnker orbital.',
+    reaction: 'Baliza de extracción -> Descenso de mecha y abordaje -> Transformación aérea a caza -> Ascenso supersónico -> Acople en el Búnker dejando a Pod 042 en centinela.',
+    holdMs: 4800,
+    payload: {
+      hook_event_name: 'SlotTrigger',
+      slot: 'flight_retreat',
+      force: true,
+      forceAudio: true,
+    },
+  },
   {
     id: 'session',
     name: '1. Enlace Táctico Inicial (SessionStart)',

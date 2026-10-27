@@ -61,6 +61,9 @@ function loadThemePackage(themeId = 'nier-2b') {
       sleepSpriteUrl: manifest.character.sleepSprite ? assetUrl(manifest.character.sleepSprite) : null,
       spinSpriteUrl: manifest.character.spinSprite ? assetUrl(manifest.character.spinSprite) : null,
       wallAnchorSpriteUrl: manifest.character.wallAnchorSprite ? assetUrl(manifest.character.wallAnchorSprite) : null,
+      flightJetSpriteUrl: manifest.character.flightJetSprite ? assetUrl(manifest.character.flightJetSprite) : null,
+      flightMechSpriteUrl: manifest.character.flightMechSprite ? assetUrl(manifest.character.flightMechSprite) : null,
+      flightMechEmptySpriteUrl: manifest.character.flightMechEmptySprite ? assetUrl(manifest.character.flightMechEmptySprite) : null,
       weaponUrl: manifest.character.weapon ? assetUrl(manifest.character.weapon) : null,
       portraitUrl: assetUrl(manifest.character.portrait),
       cutinUrls: Object.fromEntries(
@@ -74,6 +77,7 @@ function loadThemePackage(themeId = 'nier-2b') {
     },
     palette: manifest.palette || {},
     satelliteUrl: manifest.satellite ? assetUrl(manifest.satellite) : null,
+    bunkerUrl: manifest.bunker ? assetUrl(manifest.bunker) : (manifest.satellite ? assetUrl(manifest.satellite) : null),
     slots: manifest.slots || {},
     sounds: soundFiles,
     personalityCtx,

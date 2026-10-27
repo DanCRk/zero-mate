@@ -9,6 +9,8 @@
     "peekSprite": "assets/2b-peek.png",
     "ceilingSprite": "assets/2b-ceiling.png",
     "sleepSprite": "assets/2b-sleep.png",
+    "flightJetSprite": "assets/flight-unit-jet.png",
+    "flightMechSprite": "assets/flight-unit-mech.png",
     "weapon": "assets/katana.png",
     "portrait": "assets/portrait-2b.png",
     "cutins": {
@@ -16,7 +18,8 @@
       "eyes": "assets/cutin-eyes.png"
     },
     "spinSprite": "assets/2b-acrobat-spin.png",
-    "wallAnchorSprite": "assets/2b-peek.png"
+    "wallAnchorSprite": "assets/2b-peek.png",
+    "flightMechEmptySprite": "assets/flight-unit-mech-empty.png"
   },
   "companion": {
     "name": "Pod 042",
@@ -35,6 +38,16 @@
     "laser": "#e8dfc5"
   },
   "slots": {
+    "flight_intro": {
+      "animation": "ho229_flight_unit_arrival",
+      "sounds": [
+        "pod-glide",
+        "weapon-hum",
+        "katana-slash",
+        "bunker-transport",
+        "footstep-metal"
+      ]
+    },
     "sit_window": {
       "animation": "walk_and_sit_ledge",
       "sounds": [
@@ -130,9 +143,18 @@
         "cloth-rustle",
         "talk-blip"
       ]
+    },
+    "flight_retreat": {
+      "animation": "ho229_flight_unit_retreat",
+      "sounds": [
+        "weapon-hum",
+        "katana-sheathe",
+        "pod-glide",
+        "bunker-transport"
+      ]
     }
   },
-  "satellite": "assets/bunker-satellite.png",
+  "satellite": "assets/bunker.png",
   "sounds": {
     "ui-open": "sounds/ui-open.wav",
     "ui-confirm": "sounds/ui-confirm.wav",
@@ -150,5 +172,6 @@
     "talk-blip": "sounds/talk-blip.wav",
     "footstep-metal": "sounds/footstep-metal.wav",
     "cloth-rustle": "sounds/cloth-rustle.wav"
-  }
+  },
+  "bunker": "assets/bunker.png"
 }
