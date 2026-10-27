@@ -228,6 +228,19 @@ const STAGES = [
     },
   },
   {
+    id: 'retreat',
+    name: '0B. Retirada de 2B al Búnker Orbital (Flight Unit Retreat)',
+    desc: '2B solicita extracción: la Unidad de Vuelo Ho229 desciende en modo mecha, 2B aborda la cabina, se transforma en caza y asciende supersónicamente hasta acoplarse en el Búnker orbital.',
+    reaction: 'Baliza de extracción -> Descenso de mecha y abordaje -> Transformación aérea a caza -> Ascenso supersónico -> Acople en el Búnker dejando a Pod 042 en centinela.',
+    holdMs: 4800,
+    payload: {
+      hook_event_name: 'SlotTrigger',
+      slot: 'flight_retreat',
+      force: true,
+      forceAudio: true,
+    },
+  },
+  {
     id: 'session',
     name: '1. Enlace Táctico Inicial (SessionStart)',
     desc: 'Pod 042 confirma la conexión con el entorno de desarrollo y abre canal táctico.',

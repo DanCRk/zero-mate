@@ -76,6 +76,7 @@ function loadThemePackage(themeId = 'nier-2b') {
     },
     palette: manifest.palette || {},
     satelliteUrl: manifest.satellite ? assetUrl(manifest.satellite) : null,
+    bunkerUrl: manifest.bunker ? assetUrl(manifest.bunker) : (manifest.satellite ? assetUrl(manifest.satellite) : null),
     slots: manifest.slots || {},
     sounds: soundFiles,
     personalityCtx,

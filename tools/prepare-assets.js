@@ -28,6 +28,7 @@ const RAW_SOURCES = {
   '2b-ceiling.png': '2b_ceiling_hang_1792987247479.jpg',
   'flight-unit-jet.png': 'yorha_ho229_flight_unit_sprite_v2_1793072366456.jpg',
   'flight-unit-mech.png': 'yorha_ho229_type_b_vertical_final_1793072391846.jpg',
+  'bunker.png': 'yorha_bunker_sprite_1793074753951.jpg',
   'app-icon.jpg': 'app-icon.jpg',
 };
 
@@ -238,6 +239,8 @@ Process-Cutout (Join-Path $RawDir "pod-042.png") (Join-Path $OutDir "pod-042.png
 Process-Cutout (Join-Path $RawDir "katana.png")  (Join-Path $OutDir "katana.png")  340 96 6 6 $true
 Process-Cutout (Join-Path $RawDir "flight-unit-jet.png")  (Join-Path $OutDir "flight-unit-jet.png")  520 320 8 8 $true
 Process-Cutout (Join-Path $RawDir "flight-unit-mech.png") (Join-Path $OutDir "flight-unit-mech.png") 520 520 8 8 $true
+Process-Cutout (Join-Path $RawDir "bunker.png") (Join-Path $OutDir "bunker.png") 640 480 8 8 $true
+Process-Direct (Join-Path $OutDir "bunker.png") (Join-Path $OutDir "bunker-satellite.png") 360 270
 
 Process-Direct (Join-Path $RawDir "cutin-slash.png")  (Join-Path $OutDir "cutin-slash.png")  420 236
 Process-Direct (Join-Path $RawDir "cutin-eyes.png")   (Join-Path $OutDir "cutin-eyes.png")   420 236

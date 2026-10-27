@@ -33,7 +33,7 @@ async function boot() {
   ]);
   let currentConfig = config;
 
-  const [charImg, sitImg, peekImg, sleepImg, spinImg, ceilingImg, satelliteImg, flightJetImg, flightMechImg, podImg, katanaImg, cutinSlash, cutinEyes] = await Promise.all([
+  const [charImg, sitImg, peekImg, sleepImg, spinImg, ceilingImg, satelliteImg, flightJetImg, flightMechImg, bunkerImg, podImg, katanaImg, cutinSlash, cutinEyes] = await Promise.all([
     loadImage(theme.character.spriteUrl),
     theme.character.sitSpriteUrl ? loadImage(theme.character.sitSpriteUrl).catch(() => null) : Promise.resolve(null),
     theme.character.peekSpriteUrl ? loadImage(theme.character.peekSpriteUrl).catch(() => null) : Promise.resolve(null),
@@ -43,6 +43,7 @@ async function boot() {
     theme.satelliteUrl ? loadImage(theme.satelliteUrl).catch(() => null) : Promise.resolve(null),
     theme.character.flightJetSpriteUrl ? loadImage(theme.character.flightJetSpriteUrl).catch(() => null) : Promise.resolve(null),
     theme.character.flightMechSpriteUrl ? loadImage(theme.character.flightMechSpriteUrl).catch(() => null) : Promise.resolve(null),
+    (theme.bunkerUrl || theme.satelliteUrl) ? loadImage(theme.bunkerUrl || theme.satelliteUrl).catch(() => null) : Promise.resolve(null),
     loadImage(theme.companion.spriteUrl),
     loadImage(theme.character.weaponUrl),
     loadImage(theme.character.cutinUrls.slash),
@@ -70,7 +71,7 @@ async function boot() {
     weaponCanvas: document.getElementById('weapon-back'),
     podRoot: document.getElementById('pod'),
     podCanvas: document.getElementById('pod-canvas'),
-    images: { charImg, sitImg, peekImg, sleepImg, spinImg, ceilingImg, satelliteImg, flightJetImg, flightMechImg, podImg, katanaImg },
+    images: { charImg, sitImg, peekImg, sleepImg, spinImg, ceilingImg, satelliteImg, flightJetImg, flightMechImg, bunkerImg, podImg, katanaImg },
     fx,
     soundBank,
     panel,
