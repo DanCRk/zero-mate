@@ -473,11 +473,27 @@ export class FxLayer {
     return new Promise((done) => this.add({ type: 'diagnostic_hologram', life, podPosFn, charPosFn, done }));
   }
 
+  // YoRHa Ho229 Type-B Flight Unit Arrival, Mid-Air Transformation, and Disembark Sequence
+  flightUnitIntro(targetX, targetY, { jetImg, mechImg, scale = 0.62, life = 2700, onTransform, onDisembark } = {}) {
+    return new Promise((done) => {
+      this.add({
+        type: 'flight_unit_intro',
+        life,
+        targetX,
+        targetY,
+        jetImg,
+        mechImg,
+        scale,
+        transformedFired: false,
+        disembarkedFired: false,
+        onTransform,
+        onDisembark,
+        done,
+      });
+    });
+  }
+
   frame(now) {
-    if (now - this.last < FRAME_MS - 2) {
-      requestAnimationFrame((t) => this.frame(t));
-      return;
-    }
     const dt = Math.min(0.08, (now - (this.last || now)) / 1000);
     this.last = now;
 
@@ -882,6 +898,220 @@ export class FxLayer {
         ctx.font = '700 9px "Chakra Petch", monospace';
         ctx.fillStyle = YORHA_COLORS.gold;
         ctx.fillText('STANDBY // 2B RECHARGE [100%]', char.x - 62, ringY - 24);
+        ctx.restore();
+        break;
+      }
+
+      case 'flight_unit_intro': {
+        const dpr = window.devicePixelRatio || 1;
+        const viewW = this.canvas.width / dpr;
+        const viewH = this.canvas.height / dpr;
+        const s = it.scale || 0.62;
+
+        // Clamp hover position so the wide Ho229 wings and weapons are 100% visible on screen
+        const hoverX = clamp(it.targetX, 240 * s, viewW - 240 * s);
+        const hoverY = clamp(it.targetY - 230 * s, 195 * s, viewH - 220 * s);
+
+        // Determine approach direction so the jet dives across the open screen
+        const fromLeft = hoverX > viewW * 0.5;
+        const startX = fromLeft ? Math.max(-140, hoverX - 540) : Math.min(viewW + 140, hoverX + 540);
+        const startY = -150;
+
+        const jetW = 430 * s;
+        const jetH = 265 * s;
+        const mechW = 430 * s;
+        const mechH = 430 * s;
+
+        ctx.save();
+
+        // PHASE 1: Supersonic Jet Dive (t: 0.0 -> 0.34)
+        if (t < 0.34) {
+          const p1 = clamp(t / 0.34, 0, 1);
+          const e1 = 1 - Math.pow(1 - p1, 3);
+          const curX = lerp(startX, hoverX, e1);
+          const curY = lerp(startY, hoverY, e1);
+
+          // Ground target lock reticle at landing spot
+          ctx.save();
+          ctx.translate(it.targetX, it.targetY - 6);
+          ctx.scale(1, 0.32);
+          ctx.strokeStyle = `rgba(216, 184, 104, ${(0.35 + 0.35 * e1).toFixed(2)})`;
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(0, 0, (95 - 35 * e1) * s, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+
+          // Cyan ion contrail streaks behind the diving jet
+          const tailDir = fromLeft ? -1 : 1;
+          for (let i = 0; i < 4; i++) {
+            const offset = (i - 1.5) * 22 * s;
+            const trailLen = (160 + (1 - e1) * 140) * s;
+            const tx = curX + tailDir * 85 * s;
+            const ty = curY - 45 * s + offset;
+            const grad = ctx.createLinearGradient(tx, ty, tx + tailDir * trailLen, ty - trailLen * 0.65);
+            grad.addColorStop(0, 'rgba(155, 240, 255, 0.92)');
+            grad.addColorStop(0.4, 'rgba(216, 184, 104, 0.55)');
+            grad.addColorStop(1, 'rgba(155, 240, 255, 0)');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = (i === 1 || i === 2 ? 4.5 : 2.2) * s;
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx + tailDir * trailLen, ty - trailLen * 0.65);
+            ctx.stroke();
+          }
+
+          // Draw Ho229 Jet Sprite
+          if (it.jetImg) {
+            ctx.save();
+            ctx.translate(curX, curY);
+            const pitch = (fromLeft ? -1 : 1) * (1 - e1) * 0.22;
+            ctx.rotate(pitch);
+            if (fromLeft) ctx.scale(-1, 1);
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.6)';
+            ctx.shadowBlur = 14 * s;
+            ctx.drawImage(it.jetImg, -jetW * 0.5, -jetH * 0.5, jetW, jetH);
+            ctx.restore();
+          }
+        }
+        // PHASE 2: Mechanical Transformation — Jet to Humanoid Mech (t: 0.34 -> 0.52)
+        else if (t < 0.52) {
+          if (!it.transformedFired) {
+            it.transformedFired = true;
+            it.onTransform?.();
+            this.burst(hoverX, hoverY, { count: 30, power: 1.35, spread: 90 });
+            this.ring(hoverX, hoverY, { radius: 135 * s, life: 420, color: YORHA_COLORS.gold });
+            this.ring(hoverX, hoverY, { radius: 95 * s, life: 340, color: YORHA_COLORS.cyan });
+          }
+
+          const p2 = clamp((t - 0.34) / 0.18, 0, 1);
+          const backEase = 1 + 1.7 * Math.pow(p2 - 1, 3) + 0.7 * Math.pow(p2 - 1, 2);
+
+          // Folding Jet silhouette
+          if (it.jetImg && p2 < 0.75) {
+            ctx.save();
+            ctx.globalAlpha = 1 - p2 / 0.75;
+            ctx.translate(hoverX, hoverY);
+            if (fromLeft) ctx.scale(-1, 1);
+            ctx.scale(1 - p2 * 0.48, 1 + p2 * 0.42);
+            ctx.drawImage(it.jetImg, -jetW * 0.5, -jetH * 0.5, jetW, jetH);
+            ctx.restore();
+          }
+
+          // Unfolding Humanoid Mech with 2B in cockpit
+          if (it.mechImg) {
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, p2 * 1.35);
+            ctx.translate(hoverX, hoverY);
+            ctx.scale(0.52 + 0.48 * backEase, 0.62 + 0.38 * backEase);
+            ctx.shadowColor = 'rgba(216, 184, 104, 0.75)';
+            ctx.shadowBlur = 18 * s;
+            ctx.drawImage(it.mechImg, -mechW * 0.5, -mechH * 0.5, mechW, mechH);
+            ctx.restore();
+          }
+
+          // Transformation energy core flash & geometric HUD brackets
+          const flashAlpha = Math.sin(p2 * Math.PI);
+          ctx.save();
+          ctx.globalAlpha = flashAlpha;
+          ctx.strokeStyle = YORHA_COLORS.gold;
+          ctx.lineWidth = 2;
+          const bw = 155 * s;
+          const bh = 155 * s;
+          ctx.strokeRect(hoverX - bw, hoverY - bh, bw * 2, bh * 2);
+          ctx.font = '700 10px "Chakra Petch", monospace';
+          ctx.fillStyle = YORHA_COLORS.gold;
+          ctx.textAlign = 'center';
+          ctx.fillText('HO229 TYPE-B // MANEUVER MODE', hoverX, hoverY - bh - 10);
+          ctx.restore();
+        }
+        // PHASE 3: Humanoid Mech Hover & Katana Gleam (t: 0.52 -> 0.78)
+        else if (t < 0.78) {
+          const p3 = clamp((t - 0.52) / 0.26, 0, 1);
+          const bobY = Math.sin(p3 * Math.PI * 2) * 6 * s;
+
+          // Ground thruster downwash rings
+          ctx.save();
+          ctx.translate(it.targetX, it.targetY - 6);
+          ctx.scale(1, 0.3);
+          const rPulse = ((p3 * 2.5) % 1);
+          ctx.strokeStyle = `rgba(155, 240, 255, ${(0.75 * (1 - rPulse)).toFixed(2)})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, (45 + rPulse * 95) * s, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+
+          // Draw Hovering Humanoid Mech
+          if (it.mechImg) {
+            ctx.save();
+            ctx.translate(hoverX, hoverY + bobY);
+            ctx.shadowColor = 'rgba(155, 240, 255, 0.45)';
+            ctx.shadowBlur = 12 * s;
+            ctx.drawImage(it.mechImg, -mechW * 0.5, -mechH * 0.5, mechW, mechH);
+
+            // Traveling 4-point diamond glint along the Mech katana blade
+            const gx = lerp(12 * s, 175 * s, p3);
+            const gy = lerp(24 * s, 82 * s, p3);
+            const gAlpha = Math.sin(p3 * Math.PI);
+            ctx.fillStyle = `rgba(255, 255, 255, ${gAlpha.toFixed(2)})`;
+            ctx.beginPath();
+            ctx.arc(gx, gy, 5 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = YORHA_COLORS.gold;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(gx - 18 * s, gy);
+            ctx.lineTo(gx + 18 * s, gy);
+            ctx.moveTo(gx, gy - 18 * s);
+            ctx.lineTo(gx, gy + 18 * s);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Tactical telemetry label
+          ctx.save();
+          ctx.font = '700 10px "Chakra Petch", monospace';
+          ctx.fillStyle = YORHA_COLORS.beige;
+          ctx.textAlign = 'center';
+          ctx.fillText('COCKPIT HARNESS // READY FOR DEPLOYMENT', hoverX, hoverY - mechH * 0.48);
+          ctx.restore();
+        }
+        // PHASE 4: Cockpit Release, 2B Disembark & Mech Orbital Ascent (t: 0.78 -> 1.0)
+        else {
+          if (!it.disembarkedFired) {
+            it.disembarkedFired = true;
+            this.burst(hoverX, hoverY + 12 * s, { count: 26, power: 1.25, spread: 64 });
+            this.ring(hoverX, hoverY + 12 * s, { radius: 90 * s, life: 340, color: YORHA_COLORS.white });
+            it.onDisembark?.({ x: hoverX, y: hoverY + 25 * s });
+          }
+
+          const p4 = clamp((t - 0.78) / 0.22, 0, 1);
+          const ascendEase = p4 * p4;
+          const mechY = lerp(hoverY, -260, ascendEase);
+          const alpha = Math.max(0, 1 - p4 * 1.15);
+
+          // Upward Bunker recall beam trail
+          ctx.save();
+          ctx.globalAlpha = alpha * 0.65;
+          const beamGrad = ctx.createLinearGradient(hoverX, hoverY, hoverX, 0);
+          beamGrad.addColorStop(0, 'rgba(216, 184, 104, 0)');
+          beamGrad.addColorStop(0.5, 'rgba(247, 245, 235, 0.75)');
+          beamGrad.addColorStop(1, 'rgba(155, 240, 255, 0.9)');
+          ctx.fillStyle = beamGrad;
+          ctx.fillRect(hoverX - 24 * s * (1 - p4 * 0.5), 0, 48 * s * (1 - p4 * 0.5), hoverY);
+          ctx.restore();
+
+          if (it.mechImg && alpha > 0.02) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.translate(hoverX, mechY);
+            ctx.scale(1 - p4 * 0.25, 1 + p4 * 0.35);
+            ctx.drawImage(it.mechImg, -mechW * 0.5, -mechH * 0.5, mechW, mechH);
+            ctx.restore();
+          }
+        }
+
         ctx.restore();
         break;
       }
