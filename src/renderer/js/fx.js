@@ -439,6 +439,18 @@ export class FxLayer {
     return this.add({ type: 'ring', life, x, y, radius, color });
   }
 
+  // Tactical YoRHa Combat Visor Calibration Glint & HUD Lens Gleam
+  visorCalibration(headPos, dir = 1, { life = 950 } = {}) {
+    return this.add({
+      type: 'visor_calibration',
+      life,
+      x: headPos.x,
+      y: headPos.y,
+      top: headPos.top,
+      dir,
+    });
+  }
+
   // Anime Cut-in banner (cutin-slash.png / cutin-eyes.png)
   cutin(x, y, dir = 1, { kind = 'slash', life = 820 } = {}) {
     const image = this.cutins[kind] || this.cutins.slash;
@@ -654,6 +666,80 @@ export class FxLayer {
 
         ctx.clip();
         ctx.drawImage(it.image, 0, -20, w, h + 40);
+        ctx.restore();
+        break;
+      }
+
+      case 'visor_calibration': {
+        const eyeX = it.x + it.dir * 4;
+        const eyeY = it.y + 12;
+        const enter = Math.min(1, t / 0.18);
+        const exit = t > 0.75 ? (t - 0.75) / 0.25 : 0;
+        const alpha = (1 - exit) * enter;
+        if (alpha <= 0) break;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // 1. Horizontal digital HUD scan line across combat blindfold/visor
+        const scanWidth = 72;
+        const grad = ctx.createLinearGradient(eyeX - scanWidth * 0.5, eyeY, eyeX + scanWidth * 0.5, eyeY);
+        grad.addColorStop(0, 'rgba(216, 184, 104, 0)');
+        grad.addColorStop(0.35, 'rgba(155, 240, 255, 0.85)');
+        grad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+        grad.addColorStop(0.65, 'rgba(155, 240, 255, 0.85)');
+        grad.addColorStop(1, 'rgba(216, 184, 104, 0)');
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(eyeX - scanWidth * 0.5, eyeY - 1.5, scanWidth, 3);
+
+        // 2. Tactical micro-brackets [ - - ]
+        ctx.strokeStyle = YORHA_COLORS.beige;
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(eyeX - scanWidth * 0.5 - 4, eyeY - 4, 3, 8);
+        ctx.strokeRect(eyeX + scanWidth * 0.5 + 1, eyeY - 4, 3, 8);
+
+        // 3. Rotating 4-point Diamond Star Lens Glint at peak frame
+        if (t >= 0.15 && t <= 0.85) {
+          const starT = (t - 0.15) / 0.7;
+          const starAlpha = Math.sin(starT * Math.PI);
+          const starScale = Math.sin(starT * Math.PI) * 16;
+          const glintX = eyeX + it.dir * 12;
+
+          ctx.save();
+          ctx.translate(glintX, eyeY);
+          ctx.rotate(starT * 0.6);
+          ctx.globalAlpha = alpha * starAlpha;
+
+          // Outer cyan aura
+          ctx.fillStyle = 'rgba(155, 240, 255, 0.9)';
+          ctx.beginPath();
+          ctx.arc(0, 0, starScale * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 4-point elongated star flare
+          ctx.fillStyle = YORHA_COLORS.white;
+          ctx.beginPath();
+          ctx.moveTo(0, -starScale);
+          ctx.quadraticCurveTo(0, 0, starScale * 0.35, 0);
+          ctx.quadraticCurveTo(0, 0, 0, starScale);
+          ctx.quadraticCurveTo(0, 0, -starScale * 0.35, 0);
+          ctx.quadraticCurveTo(0, 0, 0, -starScale);
+          ctx.fill();
+
+          // Horizontal flare streak
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+          ctx.fillRect(-starScale * 1.5, -0.75, starScale * 3, 1.5);
+
+          ctx.restore();
+        }
+
+        // 4. Tactical telemetry label
+        ctx.font = '600 9px "Chakra Petch", monospace';
+        ctx.fillStyle = YORHA_COLORS.gold;
+        ctx.textAlign = 'center';
+        ctx.fillText('OPTIC // CALIBRATED', eyeX, eyeY - 12);
+
         ctx.restore();
         break;
       }

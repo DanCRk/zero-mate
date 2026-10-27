@@ -95,6 +95,9 @@ npm start
 
 # Or in debug mode with detached DevTools console:
 npm run dev
+
+# Run interactive hook & animation showcase (simulated agent events):
+npm run demo
 ```
 
 ### Passive IDE Hook Bridge

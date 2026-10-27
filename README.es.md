@@ -94,6 +94,9 @@ npm start
 
 # O en modo con depurador y consola activa:
 npm run dev
+
+# Ejecutar demostración interactiva de animaciones y hooks:
+npm run demo
 ```
 
 ### Gestión de Hooks Pasivos
