@@ -118,6 +118,7 @@ export class ThemeEngine {
     this.bunkerImg = images.bunkerImg || images.satelliteImg || null;
     this.flightJetImg = images.flightJetImg || null;
     this.flightMechImg = images.flightMechImg || null;
+    this.flightMechEmptyImg = images.flightMechEmptyImg || null;
     this.fx = fx;
     this.sound = soundBank;
     this.panel = panel;

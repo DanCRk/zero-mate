@@ -63,6 +63,7 @@ function loadThemePackage(themeId = 'nier-2b') {
       wallAnchorSpriteUrl: manifest.character.wallAnchorSprite ? assetUrl(manifest.character.wallAnchorSprite) : null,
       flightJetSpriteUrl: manifest.character.flightJetSprite ? assetUrl(manifest.character.flightJetSprite) : null,
       flightMechSpriteUrl: manifest.character.flightMechSprite ? assetUrl(manifest.character.flightMechSprite) : null,
+      flightMechEmptySpriteUrl: manifest.character.flightMechEmptySprite ? assetUrl(manifest.character.flightMechEmptySprite) : null,
       weaponUrl: manifest.character.weapon ? assetUrl(manifest.character.weapon) : null,
       portraitUrl: assetUrl(manifest.character.portrait),
       cutinUrls: Object.fromEntries(

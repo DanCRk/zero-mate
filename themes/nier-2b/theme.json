@@ -18,7 +18,8 @@
       "eyes": "assets/cutin-eyes.png"
     },
     "spinSprite": "assets/2b-acrobat-spin.png",
-    "wallAnchorSprite": "assets/2b-peek.png"
+    "wallAnchorSprite": "assets/2b-peek.png",
+    "flightMechEmptySprite": "assets/flight-unit-mech-empty.png"
   },
   "companion": {
     "name": "Pod 042",

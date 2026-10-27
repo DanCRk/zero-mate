@@ -474,7 +474,7 @@ export class FxLayer {
   }
 
   // YoRHa Ho229 Type-B Flight Unit Arrival from Orbital Bunker & Transformation Sequence
-  flightUnitIntro(targetX, targetY, { jetImg, mechImg, bunkerImg, scale = 0.62, life = 4600, onLaunch, onTransform, onDisembark } = {}) {
+  flightUnitIntro(targetX, targetY, { jetImg, mechImg, mechEmptyImg, bunkerImg, scale = 0.62, life = 4600, onLaunch, onTransform, onDisembark } = {}) {
     return new Promise((done) => {
       this.add({
         type: 'flight_unit_intro',
@@ -497,7 +497,7 @@ export class FxLayer {
   }
 
   // YoRHa Ho229 Type-B Extraction & Ascent to Orbital Bunker Sequence
-  flightUnitRetreat(targetX, targetY, { jetImg, mechImg, bunkerImg, scale = 0.62, life = 4400, onBoard, onTransform, onDock } = {}) {
+  flightUnitRetreat(targetX, targetY, { jetImg, mechImg, mechEmptyImg, bunkerImg, scale = 0.62, life = 4400, onBoard, onTransform, onDock } = {}) {
     return new Promise((done) => {
       this.add({
         type: 'flight_unit_retreat',
