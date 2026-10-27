@@ -193,7 +193,7 @@ vec4 torso(vec2 q) {
 
 vec4 rig(vec2 q) {
   if (uDirectTex > 0.5) return cel(q);
-  if (uSitTex > 0.5 && uArmL == 0.0 && uArmR == 0.0) {
+  if (uSitTex > 0.5) {
     return torso(bend(q));
   }
   vec2 qL = armLeftCoord(q);

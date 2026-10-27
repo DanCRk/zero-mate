@@ -227,12 +227,13 @@ export const ACTS = {
 
   // Slot: idle_quirk (3) — Adjust black combat visor & look around
   adjust_visor: {
-    priority: 1,
+    priority: 2,
     keys: [
-      [2, { head: 0.08, armL: 1.35, longL: 1.05 }, 'cloth'],
-      [6, { head: 0.12, armL: 1.48, longL: 1.08 }],
-      [4, { head: -0.1, armL: 1.42, longL: 1.06 }],
-      [2, { head: 0, armL: 0.5 }],
+      [3, { head: -0.06, armL: 0.35, longL: 1.02, armR: -0.10 }, 'cloth'],
+      [5, { head: -0.14, armL: 0.65, longL: 1.05, armR: -0.16, skirt: 1.2 }, 'visor_touch'],
+      [7, { head: 0.12, armL: 0.62, longL: 1.04, armR: -0.12, hair: 1.0, skirt: 0.8 }, 'visor_scan'],
+      [4, { head: 0.04, armL: 0.28, armR: -0.05 }],
+      [2, { head: 0, armL: 0.08, armR: 0 }],
       [1, {}],
     ],
   },
