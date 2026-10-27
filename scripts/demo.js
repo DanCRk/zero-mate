@@ -217,9 +217,9 @@ const STAGES = [
   {
     id: 'intro',
     name: '0. Llegada en Unidad de Vuelo Ho229 Tipo-B (Flight Unit Intro)',
-    desc: '2B llega en picada supersónica en modo avión, se transforma en mecha humanoide con espada y desciende al escritorio.',
-    reaction: 'Vuelo en modo caza con propulsores cian -> Transformación a modo mecha vertical -> Salto acrobático de 2B.',
-    holdMs: 3600,
+    desc: '2B aparece en grande en el centro de la pantalla en modo avión, hace un recorrido aéreo, se transforma en mecha con espada y aterriza quedando como 2B.',
+    reaction: 'Recorrido en modo avión a gran escala -> Transformación central a Mecha Humanoide -> Planeo hasta posición final -> Desacople de armadura quedando 2B lista.',
+    holdMs: 4600,
     payload: {
       hook_event_name: 'SlotTrigger',
       slot: 'flight_intro',
