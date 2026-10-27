@@ -2,7 +2,7 @@
 
 Performs HSV + green-excess chroma-key background removal with edge despill and alpha feathering
 on 2b-full.png, pod-042.png, and katana.png, normalizes sprite dimensions for the WebGL 2D shader
-rig, and generates tray.png and yorha.ico for the silent launcher.
+rig, and generates tray.png, app-icon.png, and yorha.ico for the silent launcher.
 """
 
 import shutil
@@ -17,12 +17,13 @@ ARTIFACT_DIR = Path(os.environ.get("ARTIFACT_DIR", RAW_DIR))
 
 RAW_SOURCES = {
     "2b-full.jpg": "2b_full_1792969083594.jpg",
-    "pod-042.jpg": "pod_042_1792969097851.jpg",
-    "katana.jpg": "katana_1792969115423.jpg",
+    "pod-042.jpg": "pod_042_anime_accurate_1792974981439.jpg",
+    "katana.jpg": "virtuous_treaty_sprite_1792979450619.jpg",
     "cutin-slash.jpg": "cutin_slash_1792969136803.jpg",
     "cutin-eyes.jpg": "cutin_eyes_1792969158885.jpg",
     "portrait-2b.jpg": "portrait_2b_1792969178796.jpg",
-    "portrait-pod.jpg": "portrait_pod_1792969201047.jpg",
+    "portrait-pod.jpg": "pod_042_anime_accurate_1792974981439.jpg",
+    "app-icon.jpg": "app-icon.jpg",
 }
 
 
@@ -120,12 +121,16 @@ def main():
     for dst_name, src_name in RAW_SOURCES.items():
         src_file = ARTIFACT_DIR / src_name
         dst_file = RAW_DIR / dst_name
-        shutil.copy2(src_file, dst_file)
+        if src_file.exists() and src_file.resolve() != dst_file.resolve():
+            shutil.copy2(src_file, dst_file)
 
     print("2. Chroma-keying and building sprites...")
-    build_2b_sprite(RAW_DIR / "2b-full.jpg", ASSETS_DIR / "2b-full.png")
-    build_trimmed_sprite(RAW_DIR / "pod-042.jpg", ASSETS_DIR / "pod-042.png", max_dim=180, pad=8)
-    build_trimmed_sprite(RAW_DIR / "katana.jpg", ASSETS_DIR / "katana.png", max_dim=280, pad=8)
+    if (RAW_DIR / "2b-full.jpg").exists():
+        build_2b_sprite(RAW_DIR / "2b-full.jpg", ASSETS_DIR / "2b-full.png")
+    if (RAW_DIR / "pod-042.jpg").exists():
+        build_trimmed_sprite(RAW_DIR / "pod-042.jpg", ASSETS_DIR / "pod-042.png", max_dim=180, pad=8)
+    if (RAW_DIR / "katana.jpg").exists():
+        build_trimmed_sprite(RAW_DIR / "katana.jpg", ASSETS_DIR / "katana.png", max_dim=280, pad=8)
 
     print("3. Formatting cut-ins, portraits, and icons...")
     for name, size in [
@@ -134,18 +139,27 @@ def main():
         ("portrait-2b", (160, 160)),
         ("portrait-pod", (160, 160)),
     ]:
-        im = Image.open(RAW_DIR / f"{name}.jpg").convert("RGBA")
-        im = im.resize(size, Image.Resampling.LANCZOS)
-        out = ASSETS_DIR / f"{name}.png"
-        im.save(out, optimize=True)
-        print(f"  [OK] {out.name}: {im.size}")
+        raw_file = RAW_DIR / f"{name}.jpg"
+        if raw_file.exists():
+            im = Image.open(raw_file).convert("RGBA")
+            im = im.resize(size, Image.Resampling.LANCZOS)
+            out = ASSETS_DIR / f"{name}.png"
+            im.save(out, optimize=True)
+            print(f"  [OK] {out.name}: {im.size}")
 
-    # Tray icon and Windows .ico from portrait-2b
-    p2b = Image.open(ASSETS_DIR / "portrait-2b.png")
-    tray = p2b.resize((32, 32), Image.Resampling.LANCZOS)
-    tray.save(ASSETS_DIR / "tray.png", optimize=True)
-    p2b.save(ASSETS_DIR / "yorha.ico", format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-    print("  [OK] tray.png & yorha.ico generated.")
+    # Application icon, tray icon and Windows .ico from app-icon.jpg (or fallback portrait-2b)
+    icon_src = RAW_DIR / "app-icon.jpg"
+    if not icon_src.exists():
+        icon_src = ASSETS_DIR / "portrait-2b.png"
+
+    if icon_src.exists():
+        icon_img = Image.open(icon_src).convert("RGBA")
+        tray = icon_img.resize((32, 32), Image.Resampling.LANCZOS)
+        tray.save(ASSETS_DIR / "tray.png", optimize=True)
+        app_icon = icon_img.resize((512, 512), Image.Resampling.LANCZOS)
+        app_icon.save(ASSETS_DIR / "app-icon.png", optimize=True)
+        icon_img.save(ASSETS_DIR / "yorha.ico", format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+        print(f"  [OK] tray.png, app-icon.png & yorha.ico generated from {icon_src.name}.")
 
 
 if __name__ == "__main__":
