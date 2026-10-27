@@ -303,14 +303,19 @@ export class ThemeEngine {
   }
 
   canSit(win) {
-    const roomAbove = SPRITE.hip * this.scale + 16;
-    return !win.max && win.w > 260 && win.y > roomAbove && win.y < this.view.h - 80;
+    if (!win) return false;
+    const minW = Math.min(200, this.view.w * 0.25);
+    const minTop = 20;
+    const maxTop = this.view.h - 90;
+    return !win.max && win.w >= minW && win.y >= minTop && win.y <= maxTop;
   }
 
   covered(win, x) {
+    if (!win || win.id === this.windows.fg) return false;
     const half = 34 * this.scale;
     for (const o of this.windows.wins) {
-      if (o === win || o.id === win.id) return false;
+      if (o === win || o.id === win.id) break;
+      if (o.w >= this.view.w - 12 && o.h >= this.view.h - 12) continue;
       if (o.x < x + half && o.x + o.w > x - half && o.y <= win.y && o.y + o.h >= win.y) return true;
     }
     return false;
@@ -320,7 +325,9 @@ export class ThemeEngine {
     const options = [];
     for (const win of this.windows.wins) {
       if (!this.canSit(win)) continue;
-      const dx = clamp(rand(win.w * 0.22, win.w * 0.68), 65, Math.max(65, win.w - 160));
+      const minX = Math.min(65, win.w * 0.15);
+      const maxX = Math.max(minX, win.w - minX);
+      const dx = clamp(rand(win.w * 0.22, win.w * 0.68), minX, maxX);
       if (this.covered(win, win.x + dx)) continue;
       options.push({ win, dx });
     }
@@ -381,6 +388,14 @@ export class ThemeEngine {
     if (this.stowed || this.busy) return;
     const seat = opts.seat || this.pickSeat();
     if (!seat) {
+      if (opts.announce !== false) {
+        this.panel.say({
+          kind: 'info',
+          speaker: 'pod',
+          line: 'Reporte: No se detectan ventanas compatibles para anclaje. Permaneciendo en posición de tierra.',
+          hold: 3600,
+        });
+      }
       await this.slotTraverse({ to: { x: rand(180, this.view.w - 180), y: this.floor } });
       return;
     }
@@ -494,13 +509,31 @@ export class ThemeEngine {
       await this.slotCompanionInteract({ initiator: '2b' });
     } else {
       this.sound.play('cloth-rustle');
+      const h = this.head();
+      const dir = this.facing;
+      const actPromise = this.perform('adjust_visor');
+
+      // Mid-animation: tactical optic calibration sweep, lens gleam star & anime cut-in
+      await sleep(240);
+      this.sound.play('pod-scan', { rate: 1.6, gain: 0.55 });
+      this.sound.play('ui-open', { rate: 2.0, gain: 0.4 });
+      this.fx.visorCalibration(h, dir);
+
+      this.fx.cutin(
+        clamp(h.x - (dir === 1 ? 40 : 270), 20, this.view.w - 340),
+        clamp(h.y - 80, 20, this.view.h - 190),
+        dir,
+        { kind: 'eyes', life: 750 }
+      );
+
       this.panel.say({
         kind: 'info',
         speaker: '2b',
         line: pick(NIER_DIALOGUES.idle_visor),
         hold: 4000,
       });
-      await this.perform('adjust_visor');
+
+      await actPromise;
     }
   }
 
@@ -1449,10 +1482,14 @@ export class ThemeEngine {
   drop() {
     const s = this.scale;
     const hip = this.pos.y - (SPRITE.feet.y - SPRITE.hip) * s;
+    const tolerance = Math.max(50, 68 * s);
     for (const win of this.windows.wins) {
-      if (!this.canSit(win) || Math.abs(hip - win.y) > 28) continue;
-      if (this.pos.x < win.x + 45 || this.pos.x > win.x + win.w - 45 || this.covered(win, this.pos.x)) continue;
-      const dx = this.pos.x - win.x;
+      if (!this.canSit(win)) continue;
+      if (Math.abs(hip - win.y) > tolerance) continue;
+      const minX = Math.min(35, win.w * 0.1);
+      if (this.pos.x < win.x + minX || this.pos.x > win.x + win.w - minX) continue;
+      if (this.covered(win, this.pos.x)) continue;
+      const dx = clamp(this.pos.x - win.x, minX, win.w - minX);
       this.pos = this.seat(win, dx);
       this.setStance('sit', { perch: { id: win.id, dx } });
       this.sound.play('cloth-rustle');
